@@ -2,7 +2,7 @@
 // loads it unbundled, and src/modules ships only inside the renderer bundle.
 
 // Returns the file to open from process.argv, or null, skipping flags, the dev
-// "." entry, and the packaged app path.
+// "."/"./" entry, and the packaged app path.
 exports.getOpenFileFromArgv = function (argv) {
   let files = argv
     .slice(1)
@@ -10,6 +10,7 @@ exports.getOpenFileFromArgv = function (argv) {
       (arg) =>
         !arg.startsWith('-') &&
         arg !== '.' &&
+        arg !== './' &&
         !arg.endsWith('.asar') &&
         !arg.endsWith('.asar/'),
     )

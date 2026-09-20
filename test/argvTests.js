@@ -24,9 +24,11 @@ describe('getOpenFileFromArgv', () => {
     assert.strictEqual(getOpenFileFromArgv([linuxBin, file]), file)
   })
 
-  it('skips the dev-mode "." entry', () => {
+  it('skips the dev-mode app entry', () => {
     assert.strictEqual(getOpenFileFromArgv([dev, '.']), null)
     assert.strictEqual(getOpenFileFromArgv([dev, '.', file]), file)
+    assert.strictEqual(getOpenFileFromArgv([dev, './']), null)
+    assert.strictEqual(getOpenFileFromArgv([dev, './', file]), file)
   })
 
   it('works regardless of the binary name (renamed Linux electron)', () => {
