@@ -4,7 +4,7 @@ import {normalizeRoot} from '../src/fox-sgf.js'
 import {writeFileSync, mkdtempSync, rmSync} from 'fs'
 import {join} from 'path'
 import {tmpdir} from 'os'
-
+// push test
 describe('Fox SGF komi', () => {
   for (const [rules, komi, expected] of [
     ['Japanese', '550', '5.5'],
