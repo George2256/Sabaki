@@ -373,6 +373,7 @@ class App extends Component {
         showCommentBox: state.showCommentBox,
         showLeftSidebar: state.showLeftSidebar,
         engineGameOngoing: state.engineGameOngoing,
+        batchAnalysisRunning: !!state.batchAnalysis?.running,
       }),
 
       h(TripleSplitContainer, {

@@ -395,7 +395,13 @@ export default class EngineSyncer extends EventEmitter {
     try {
       await this.stateTracker.sync({komi, boardsize, history})
     } catch (err) {
-      throw new Error(t('GTP engine can’t be synced to current state.'))
+      throw new Error(
+        t('GTP engine can’t be synced to current state.') +
+          '\n' +
+          t(err.message) +
+          ` (KM=${komi}, SZ=${boardsize.join('×')})`,
+        {cause: err},
+      )
     }
 
     this.treePosition = id

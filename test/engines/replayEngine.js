@@ -30,6 +30,7 @@ const opt = (name, fallback) => {
 
 const transcriptPath = opt('--transcript')
 const analyzeCommand = opt('--analyze-command', 'kata-analyze')
+const maxKomi = Number(opt('--max-komi', 'Infinity'))
 
 // Fail fast and loud on a missing/unreadable/empty transcript. Otherwise the
 // engine would just stream nothing, surfacing only as an opaque e2e timeout
@@ -147,6 +148,11 @@ createInterface({input: process.stdin}).on('line', (raw) => {
       return ok(supported.join('\n'))
     case 'known_command':
       return ok(supported.includes(rest[0]) ? 'true' : 'false')
+    case 'komi':
+      return Number.isFinite(Number(rest[0])) &&
+        Math.abs(Number(rest[0])) <= maxKomi
+        ? ok()
+        : err('unacceptable komi')
     case 'genmove':
       return ok('pass')
     case 'quit':

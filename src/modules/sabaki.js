@@ -12,6 +12,7 @@ import sgf from '@sabaki/sgf'
 
 import i18n from '../i18n.js'
 import EngineSyncer from './enginesyncer.js'
+import {analyzePosition, engineOperation} from './batchanalysis.js'
 import * as dialog from './dialog.js'
 import * as fileformats from './fileformats/index.js'
 import * as gametree from './gametree.js'
@@ -102,6 +103,7 @@ class Sabaki extends EventEmitter {
       engines: null,
       attachedEngineSyncers: [],
       analyzingEngineSyncerId: null,
+      batchAnalysis: null,
       blackEngineSyncerId: null,
       whiteEngineSyncerId: null,
       engineGameOngoing: null,
@@ -1996,6 +1998,8 @@ class Sabaki extends EventEmitter {
   }
 
   async detachEngines(syncerIds) {
+    if (syncerIds.includes(this.batchAnalysisJob?.syncer.id))
+      await this.stopBatchAnalysis()
     let detachEngineSyncers = this.state.attachedEngineSyncers.filter(
       (syncer) => syncerIds.includes(syncer.id),
     )
@@ -2048,6 +2052,7 @@ class Sabaki extends EventEmitter {
   }
 
   async generateMove(syncerId, treePosition, {commit = () => true} = {}) {
+    await this.stopBatchAnalysis()
     let t = i18n.context('sabaki.engine')
     let sign = this.getPlayer(treePosition)
     let color = sign > 0 ? 'B' : 'W'
@@ -2167,6 +2172,7 @@ class Sabaki extends EventEmitter {
   }
 
   async startEngineGame(treePosition) {
+    await this.stopBatchAnalysis()
     let t = i18n.context('sabaki.engine')
     let {engineGameOngoing, attachedEngineSyncers} = this.state
     let engineCount = attachedEngineSyncers.length
@@ -2250,13 +2256,19 @@ class Sabaki extends EventEmitter {
   }
 
   async analyzeMove(treePosition) {
+    if (this.batchAnalysisJob) return
     let sign = this.getPlayer(treePosition)
     let color = sign > 0 ? 'B' : 'W'
     let syncer = this.inferredState.analyzingEngineSyncer
     if (syncer == null || syncer.suspended) return
 
     let synced = await this.syncEngine(syncer.id, treePosition)
-    if (!synced) return
+    if (
+      !synced ||
+      this.batchAnalysisJob ||
+      this.state.analyzingEngineSyncerId !== syncer.id
+    )
+      return
 
     let commandName = setting
       .get('engines.analyze_commands')
@@ -2274,6 +2286,7 @@ class Sabaki extends EventEmitter {
   }
 
   async startAnalysis(syncerId) {
+    await this.stopBatchAnalysis()
     if (this.state.analyzingEngineSyncerId === syncerId) return
 
     let t = i18n.context('sabaki.engine')
@@ -2308,6 +2321,8 @@ class Sabaki extends EventEmitter {
   }
 
   stopAnalysis() {
+    this.stopBatchAnalysis()
+    clearTimeout(this.continuousAnalysisId)
     let syncer = this.inferredState.analyzingEngineSyncer
 
     if (syncer != null) {
@@ -2319,6 +2334,157 @@ class Sabaki extends EventEmitter {
       analysisTreePosition: null,
       analyzingEngineSyncerId: null,
     })
+  }
+
+  async startBatchAnalysis() {
+    if (this.batchAnalysisJob) return
+    const t = i18n.context('BatchAnalysis')
+    if (this.state.engineGameOngoing != null) {
+      await dialog.showMessageBox(
+        t('Stop the engine game before drawing the graph.'),
+        'info',
+      )
+      return
+    }
+    const candidates = this.state.attachedEngineSyncers.filter(
+      (syncer) =>
+        !syncer.suspended &&
+        setting
+          .get('engines.analyze_commands')
+          .some((command) => syncer.commands.includes(command)),
+    )
+    const syncer =
+      candidates.find((s) => s.id === this.state.analyzingEngineSyncerId) ||
+      candidates.find((s) => s.id === this.lastAnalyzingEngineSyncerId) ||
+      candidates[0]
+    if (!syncer) {
+      await dialog.showMessageBox(
+        t('Attach an analysis-capable engine first.'),
+        'info',
+      )
+      return
+    }
+    this.stopAnalysis()
+    const tree = this.inferredState.gameTree
+    const ids = [
+      ...tree.listCurrentNodes(this.state.gameCurrents[this.state.gameIndex]),
+    ].map((node) => node.id)
+    const job = {syncer, tree, ids, controller: new AbortController()}
+    this.batchAnalysisJob = job
+    this.lastAnalyzingEngineSyncerId = syncer.id
+    const hasWinrate = (node) =>
+      node.data.SBKV?.[0]?.trim() !== '' &&
+      node.data.SBKV != null &&
+      Number.isFinite(+node.data.SBKV[0])
+    const pending = ids.filter((id) => !hasWinrate(tree.get(id)))
+    let completed = ids.length - pending.length
+    this.setState({
+      batchAnalysis: {
+        rootId: tree.root.id,
+        completed,
+        total: ids.length,
+        running: true,
+      },
+      showWinrateGraph: true,
+      showGameGraph: true,
+    })
+    const checkTree = () => {
+      const current = this.inferredState.gameTree
+      const path = [
+        ...current.listCurrentNodes(
+          this.state.gameCurrents[this.state.gameIndex],
+        ),
+      ].map((node) => node.id)
+      if (current !== job.tree || !helper.equals(path, ids))
+        this.stopBatchAnalysis()
+    }
+    this.on('change', checkTree)
+    job.promise = (async () => {
+      let error = null
+      try {
+        await engineOperation(syncer, syncer.sendAbort())
+        for (const id of pending) {
+          if (job.controller.signal.aborted) break
+          // Synchronize against the captured game, never whichever game happens
+          // to be displayed after an asynchronous engine response.
+          await engineOperation(syncer, syncer.sync(job.tree, id))
+          if (job.controller.signal.aborted) break
+          const analysis = await analyzePosition(syncer, {
+            id,
+            color: this.getPlayer(id) > 0 ? 'B' : 'W',
+            command: setting
+              .get('engines.analyze_commands')
+              .find((command) => syncer.commands.includes(command)),
+            signal: job.controller.signal,
+          })
+          await engineOperation(syncer, syncer.sendAbort())
+          if (job.controller.signal.aborted) break
+          const sign = analysis.sign
+          const winrate = sign < 0 ? 100 - analysis.winrate : analysis.winrate
+          const scoreLead = sign < 0 ? -analysis.scoreLead : analysis.scoreLead
+          job.tree = job.tree.mutate((draft) => {
+            draft.updateProperty(id, 'SBKV', [
+              (Math.round(winrate * 100) / 100).toString(),
+            ])
+            if (Number.isFinite(scoreLead))
+              draft.updateProperty(id, 'SBKS', [
+                (Math.round(scoreLead * 100) / 100).toString(),
+              ])
+          })
+          this.setCurrentTreePosition(job.tree, this.state.treePosition)
+          completed++
+          this.setState({
+            batchAnalysis: {
+              rootId: tree.root.id,
+              completed,
+              total: ids.length,
+              running: true,
+            },
+          })
+        }
+      } catch (err) {
+        if (!job.controller.signal.aborted) error = err
+      } finally {
+        this.removeListener('change', checkTree)
+        try {
+          await engineOperation(syncer, syncer.sendAbort())
+        } catch (err) {
+          if (!job.controller.signal.aborted) error = error || err
+        }
+        if (this.batchAnalysisJob === job) {
+          this.batchAnalysisJob = null
+          this.setState({
+            batchAnalysis: {
+              rootId: tree.root.id,
+              completed,
+              total: ids.length,
+              running: false,
+            },
+          })
+        }
+      }
+      if (error)
+        await dialog.showMessageBox(
+          t('Unable to finish analysis. Completed results have been kept.') +
+            '\n' +
+            t(error.message),
+          'warning',
+        )
+    })()
+    return job.promise
+  }
+
+  stopBatchAnalysis() {
+    const job = this.batchAnalysisJob
+    if (!job) return Promise.resolve()
+    if (!job.controller.signal.aborted) {
+      job.controller.abort()
+      job.syncer.sendAbort()
+      this.setState({
+        batchAnalysis: {...this.state.batchAnalysis, stopping: true},
+      })
+    }
+    return job.promise || Promise.resolve()
   }
 
   // Find Methods

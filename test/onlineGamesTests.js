@@ -141,13 +141,3 @@ describe('online game providers', () => {
     }
   })
 })
-
-describe('Fox SGF compatibility', () => {
-  it('normalizes legacy Chinese komi without rewriting comments or moves', async () => {
-    const {service} = fixture([
-      {chess: '(;GM[1]C[keep KM[375\\] text]KM[375];B[aa])'},
-    ])
-    const {content} = await service.download({provider: 'fox', id: '1'})
-    assert.equal(content, '(;GM[1]C[keep KM[375\\] text]KM[7.5];B[aa])')
-  })
-})

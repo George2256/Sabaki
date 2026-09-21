@@ -44,6 +44,7 @@ exports.get = function (props = {}) {
     showCommentBox,
     showLeftSidebar,
     engineGameOngoing,
+    batchAnalysisRunning,
   } = props
 
   let data = [
@@ -530,6 +531,20 @@ exports.get = function (props = {}) {
               sabaki.stopAnalysis()
             }
           },
+        },
+        {
+          label: i18n.t(
+            'BatchAnalysis',
+            batchAnalysisRunning
+              ? 'Stop Drawing Winrate Graph'
+              : 'Quick Draw Winrate Graph',
+          ),
+          accelerator: 'F6',
+          enabled: !engineGameOngoing || batchAnalysisRunning,
+          click: () =>
+            sabaki.batchAnalysisJob
+              ? sabaki.stopBatchAnalysis()
+              : sabaki.startBatchAnalysis(),
         },
         {
           label: !engineGameOngoing

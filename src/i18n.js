@@ -60,6 +60,17 @@ exports.formatWeekdayShort = function (weekday) {
 function loadStrings(strings) {
   dolm.load({
     ...strings,
+    ...(require('./engine-strings')[appLang]
+      ? {
+          EngineSyncer: {
+            ...strings.EngineSyncer,
+            ...require('./engine-strings')[appLang],
+          },
+        }
+      : {}),
+    ...(require('./batch-analysis-strings')[appLang]
+      ? {BatchAnalysis: require('./batch-analysis-strings')[appLang]}
+      : {}),
     ...(require('./online-games/strings')[appLang]
       ? {OnlineGames: require('./online-games/strings')[appLang]}
       : {}),

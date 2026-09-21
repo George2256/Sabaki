@@ -12,6 +12,7 @@ const setting = {
   set: (key, value) => window.sabaki.setting.set(key, value),
 }
 
+const batchControlsHeight = 32
 const propertiesMinHeight = setting.get('view.properties_minheight')
 const winrateGraphMinHeight = setting.get('view.winrategraph_minheight')
 const winrateGraphMaxHeight = setting.get('view.winrategraph_maxheight')
@@ -58,6 +59,7 @@ export default class Sidebar extends Component {
     }
 
     this.handleWinrateGraphSplitChange = ({sideSize}) => {
+      sideSize -= batchControlsHeight
       sideSize = Math.min(
         Math.max(winrateGraphMinHeight, sideSize),
         winrateGraphMaxHeight,
@@ -108,6 +110,7 @@ export default class Sidebar extends Component {
       treePosition,
 
       analysisType,
+      batchAnalysis,
       showWinrateGraph,
       showGameGraph,
       showCommentBox,
@@ -126,7 +129,11 @@ export default class Sidebar extends Component {
       1,
     )
     let level = gameTree.getLevel(treePosition)
-    showWinrateGraph = showWinrateGraph && winrateData.some((x) => x != null)
+    batchAnalysis =
+      batchAnalysis?.rootId === gameTree.root.id ? batchAnalysis : null
+    showWinrateGraph =
+      showWinrateGraph &&
+      (batchAnalysis != null || winrateData.some((x) => x != null))
 
     return h(
       'section',
@@ -138,9 +145,12 @@ export default class Sidebar extends Component {
       h(SplitContainer, {
         vertical: true,
         invert: true,
-        sideSize: !showWinrateGraph ? 0 : winrateGraphHeight,
+        sideSize: !showWinrateGraph
+          ? 0
+          : winrateGraphHeight + batchControlsHeight,
 
         sideContent: h(WinrateGraph, {
+          batchAnalysis,
           lastPlayer,
           width: winrateGraphWidth,
           data: analysisType === 'winrate' ? winrateData : scoreLeadData,

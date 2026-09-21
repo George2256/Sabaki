@@ -1,5 +1,6 @@
 import * as sgf from '@sabaki/sgf'
 import i18n from '../../i18n.js'
+import {normalizeRoot} from '../../fox-sgf.js'
 import {getId} from '../utils.js'
 import * as gametree from '../gametree.js'
 
@@ -11,7 +12,10 @@ export const meta = {
 }
 
 let toGameTrees = (rootNodes) =>
-  rootNodes.map((root) => gametree.new({getId, root}))
+  rootNodes.map((root) => {
+    normalizeRoot(root.data)
+    return gametree.new({getId, root})
+  })
 
 export function parse(content, onProgress = () => {}) {
   let rootNodes = sgf.parse(content, {getId, onProgress})

@@ -1477,3 +1477,17 @@ header {
   #onlinegames .online-search { flex-wrap: wrap; }
   #onlinegames td, #onlinegames th { padding: 8px 6px; }
 }
+
+#winrategraph { grid-template-rows: 32px auto 1fr; }
+#winrategraph .batch-analysis-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 8px;
+  border-bottom: 1px solid #333;
+  font-size: .8rem;
+}
+#winrategraph .batch-analysis-controls span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#winrategraph .batch-analysis-controls button { padding: 4px 6px; font-size: inherit; flex-shrink: 0; }
+#winrategraph .batch-analysis-controls button:disabled { opacity: .5; }

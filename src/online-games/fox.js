@@ -21,21 +21,6 @@ function result(item) {
   return winner + suffix
 }
 
-// Normalize the known legacy Chinese-komi encoding returned by this endpoint.
-// Match complete properties so a comment containing "KM[375]" is untouched.
-function normalizeSgf(content) {
-  let nodes = 0
-  return content.replace(
-    /[A-Z]+\s*(?:\[(?:\\[\s\S]|[^\]\\])*\]\s*)+|;/g,
-    (token) => {
-      if (token === ';') nodes++
-      return nodes === 1 && /^KM\s*\[375\]\s*$/.test(token)
-        ? token.replace('[375]', '[7.5]')
-        : token
-    },
-  )
-}
-
 module.exports = {
   id: 'fox',
   name: 'Fox Go',
@@ -111,6 +96,6 @@ module.exports = {
         : ''
     if (!/^\(\s*;/.test(content))
       throw new Error('The server returned an invalid game record.')
-    return {content: normalizeSgf(content), extension: 'sgf'}
+    return {content, extension: 'sgf'}
   },
 }

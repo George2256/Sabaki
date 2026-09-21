@@ -5,6 +5,7 @@ import sabaki from '../../modules/sabaki.js'
 import {noop} from '../../modules/helper.js'
 
 const t = i18n.context('WinrateGraph')
+const batchT = i18n.context('BatchAnalysis')
 const setting = {
   get: (key) => window.sabaki.setting.get(key),
   onDidChange: (callback) => window.sabaki.setting.onDidChange(callback),
@@ -89,10 +90,13 @@ export default class WinrateGraph extends Component {
   }
 
   shouldComponentUpdate(
-    {lastPlayer, width, currentIndex, data, analysisType},
+    {lastPlayer, width, currentIndex, data, analysisType, batchAnalysis},
     {invert},
   ) {
     return (
+      batchAnalysis !== this.props.batchAnalysis ||
+      data.length !== this.props.data.length ||
+      data.some((value, index) => value !== this.props.data[index]) ||
       lastPlayer !== this.props.lastPlayer ||
       width !== this.props.width ||
       currentIndex !== this.props.currentIndex ||
@@ -126,7 +130,8 @@ export default class WinrateGraph extends Component {
   }
 
   render() {
-    let {lastPlayer, width, currentIndex, data, analysisType} = this.props
+    let {lastPlayer, width, currentIndex, data, analysisType, batchAnalysis} =
+      this.props
     let {invert} = this.state
     let blunderThreshold =
       analysisType === 'winrate'
@@ -193,6 +198,39 @@ export default class WinrateGraph extends Component {
           height: this.state.height + 'px',
         },
       },
+
+      h(
+        'div',
+        {class: 'batch-analysis-controls'},
+        h(
+          'span',
+          {role: 'status'},
+          batchAnalysis
+            ? `${batchT(batchAnalysis.running ? 'Analyzing' : batchAnalysis.completed === batchAnalysis.total ? 'Complete' : 'Stopped')} ${batchAnalysis.completed}/${batchAnalysis.total}`
+            : batchT('Current branch'),
+        ),
+        h(
+          'button',
+          {
+            type: 'button',
+            disabled: !!batchAnalysis?.stopping,
+            title: batchT(
+              'Analyze every position in the current branch. Existing results are kept.',
+            ),
+            onClick: () =>
+              sabaki.batchAnalysisJob
+                ? sabaki.stopBatchAnalysis()
+                : sabaki.startBatchAnalysis(),
+          },
+          batchT(
+            batchAnalysis?.stopping
+              ? 'Stopping…'
+              : batchAnalysis?.running
+                ? 'Stop'
+                : 'Quick Draw',
+          ),
+        ),
+      ),
 
       h(WinrateStrip, {
         player: lastPlayer,

@@ -48,10 +48,14 @@ Searches do not download every SGF; records download only when opened. Closing
 the panel invalidates pending UI work so a late download cannot replace the
 board.
 
-Fox's legacy Chinese-komi value `KM[375]` is normalized to `KM[7.5]` in the root
-node, leaving comments and moves intact. Other komi values are preserved. The
-compatibility issue is also documented in
-[KaTrain issue 177](https://github.com/sanderland/katrain/issues/177).
+The SGF importer recognizes `AP[foxwq]` and normalizes legacy encoded komi
+according to `RU`: Japanese/Korean values are divided by 100 (`550 → 5.5`,
+`650 → 6.5`), and Chinese values by 50 (`375 → 7.5`). Standard-sized komi,
+unknown rules, unmarked SGFs, comments and moves are preserved. This happens in
+both string and file import, so previously saved Fox records are repaired too.
+Conversion is idempotent when an imported game is saved and reopened. The
+regression was reproduced with Fox game `1760680258080010005` (Nie Weiping vs.
+Fujisawa Hideyuki, 1985-11-20): KataGo rejected the unconverted `komi 550`.
 
 Run `npm test`, `npm run bundle`, then
 `npx playwright test --project=online-games`. Unit tests use deterministic
