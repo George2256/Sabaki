@@ -1,9 +1,10 @@
 // Fox exports komi in hundredths of a point under Japanese/Korean rules,
 // or hundredths of a stone under Chinese rules (one stone = two points).
-// Restrict conversion to marked Fox records and encoded magnitudes so reading
-// an already-normalized SGF again is safe and ordinary SGFs stay unchanged.
+// Sabaki replaces AP[] when saving, so a later local copy may no longer carry
+// AP[foxwq]. An absolute komi of 100 or more is invalid for normal Go games
+// and rejected by GTP engines, so repair that legacy encoding by rule even when
+// the source marker was lost. Reading an already-normalized SGF stays safe.
 exports.normalizeRoot = function (data) {
-  if (!data.AP?.some((value) => /^foxwq(?::|$)/i.test(value))) return
   const raw = data.KM?.[0]
   const komi = Number(raw)
   if (!Number.isFinite(komi) || Math.abs(komi) < 100) return

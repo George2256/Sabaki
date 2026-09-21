@@ -26,9 +26,15 @@ describe('Fox SGF komi', () => {
       assert.equal(tree.root.data.KM[0], expected)
     })
   }
-  it('preserves unmarked SGFs, comments, variations, moves and zero komi', () => {
+  it('repairs a saved Fox SGF whose AP marker was replaced by Sabaki', () => {
     const [ordinary] = parse('(;KM[550]RU[Japanese];B[aa])')
-    assert.equal(ordinary.root.data.KM[0], '550')
+    assert.equal(ordinary.root.data.KM[0], '5.5')
+    const [saved] = parse(
+      '(;AP[Sabaki:0.60.2]RU[Japanese]KM[550]PB[聂卫平]PW[藤泽秀行];B[aa])',
+    )
+    assert.equal(saved.root.data.KM[0], '5.5')
+  })
+  it('preserves ordinary komi, comments, variations and moves', () => {
     const [fox] = parse(
       '(;AP[foxwq]RU[Japanese]KM[550]C[keep KM[550\\] text](;B[aa])(;B[bb]))',
     )
@@ -38,6 +44,8 @@ describe('Fox SGF komi', () => {
       fox.root.children.map((n) => n.data.B[0]),
       ['aa', 'bb'],
     )
+    const [normal] = parse('(;AP[Sabaki:0.60.2]RU[Japanese]KM[6.5];B[aa])')
+    assert.equal(normal.root.data.KM[0], '6.5')
   })
   it('also fixes previously saved Fox SGFs loaded from disk', () => {
     const dir = mkdtempSync(join(tmpdir(), 'sabaki-fox-test-'))
