@@ -71,6 +71,11 @@ exports.get = function (props = {}) {
           click: () => sabaki.loadFile(),
         },
         {
+          label: i18n.t('OnlineGames', 'Online Games…'),
+          enabled: !disableGameLoading,
+          click: () => sabaki.openDrawer('onlinegames'),
+        },
+        {
           label: i18n.t('menu.file', '&Save'),
           accelerator: 'CmdOrCtrl+S',
           click: () => sabaki.saveFile(sabaki.state.representedFilename),

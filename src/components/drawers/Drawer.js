@@ -6,14 +6,13 @@ export default class Drawer extends Component {
     super(props)
 
     this.state = {
-      hidecontent: props.show,
+      hidecontent: !props.show,
     }
   }
 
   componentWillReceiveProps(nextProps) {
+    clearTimeout(this.hidecontentId)
     if (nextProps.show) {
-      clearTimeout(this.hidecontentId)
-
       if (this.state.hidecontent) this.setState({hidecontent: false})
     } else {
       if (!this.state.hidecontent)
@@ -22,6 +21,10 @@ export default class Drawer extends Component {
           500,
         )
     }
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this.hidecontentId)
   }
 
   render({type, show, children}, {hidecontent}) {

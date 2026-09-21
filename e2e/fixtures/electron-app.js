@@ -4,12 +4,15 @@ const fs = require('fs')
 const os = require('os')
 
 const test = base.extend({
-  electronApp: async ({}, use) => {
+  appLanguage: ['en', {option: true}],
+  electronApp: async ({appLanguage}, use) => {
     // Create isolated temp directory for settings
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sabaki-e2e-'))
 
     // Pre-seed settings to disable animations, sounds, update checks, etc.
     const settings = {
+      'app.lang': appLanguage,
+      'setting.overwrite.v0.43.3_4': [],
       'app.startup_check_updates': false,
       'app.startup_check_updates_delay': 100000,
       'app.loadgame_delay': 0,

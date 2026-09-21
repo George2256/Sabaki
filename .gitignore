@@ -1,3 +1,26 @@
+# OS and local IDE files
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+.idea/
+*.swp
+*.swo
+*~
+
+# Local environment overrides (keep shareable templates)
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+# Package-manager debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
 /engines/
 
 dist/
@@ -13,6 +36,9 @@ bundle.js.map
 
 playwright-report/
 test-results/
+blob-report/
+coverage/
+.nyc_output/
 
 # Engine integration test cache (downloaded nets, gtp configs)
 .engine-cache/

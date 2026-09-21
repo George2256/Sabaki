@@ -1445,3 +1445,35 @@ header {
 .shudan-vertex.shudan-marker_point .shudan-marker {
   background: transparent !important;
 }
+
+/* Online records share the existing drawer palette and native form controls. */
+#onlinegames {
+  box-sizing: border-box;
+  height: min(560px, 85%);
+  bottom: 0;
+  transform: translateY(100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+#onlinegames.show { transform: translateY(0); }
+#onlinegames.hidecontent { display: none; }
+#onlinegames h2 { margin: 0; }
+#onlinegames .online-search { display: flex; gap: 8px; }
+#onlinegames .online-search input { flex: 1; min-width: 80px; }
+#onlinegames .online-status, #onlinegames .online-error { margin: 0; }
+#onlinegames .online-status, #onlinegames .online-footer span { opacity: .7; }
+#onlinegames .online-error { color: #ffb4a6; }
+#onlinegames .online-results { flex: 1; min-height: 0; overflow: auto; background: rgba(0, 0, 0, .2); }
+#onlinegames table { width: 100%; border-collapse: collapse; text-align: left; }
+#onlinegames th { font-weight: normal; opacity: .7; }
+#onlinegames th, #onlinegames td { padding: 10px 12px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+#onlinegames td { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#onlinegames tbody tr:hover { background: rgba(255, 255, 255, .04); }
+#onlinegames .online-empty { padding: 32px 12px; text-align: center; opacity: .6; }
+#onlinegames .online-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+#onlinegames button:disabled { opacity: .45; cursor: default; }
+@media (max-width: 650px) {
+  #onlinegames .online-search { flex-wrap: wrap; }
+  #onlinegames td, #onlinegames th { padding: 8px 6px; }
+}

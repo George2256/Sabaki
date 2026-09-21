@@ -58,7 +58,12 @@ exports.formatWeekdayShort = function (weekday) {
 }
 
 function loadStrings(strings) {
-  dolm.load(strings)
+  dolm.load({
+    ...strings,
+    ...(require('./online-games/strings')[appLang]
+      ? {OnlineGames: require('./online-games/strings')[appLang]}
+      : {}),
+  })
 
   if (isElectron && !isRenderer && ipcMain) {
     ipcMain.emit('build-menu')

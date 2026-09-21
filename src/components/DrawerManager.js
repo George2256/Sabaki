@@ -2,6 +2,8 @@ import {h, Component} from 'preact'
 import sabaki from '../modules/sabaki.js'
 import {getRootProperty} from '../modules/gametree.js'
 
+import OnlineGamesDrawer from './drawers/OnlineGamesDrawer.js'
+
 import InfoDrawer from './drawers/InfoDrawer.js'
 import ScoreDrawer from './drawers/ScoreDrawer.js'
 import PreferencesDrawer from './drawers/PreferencesDrawer.js'
@@ -83,6 +85,7 @@ export default class DrawerManager extends Component {
     return h(
       'section',
       {},
+      h(OnlineGamesDrawer, {show: openDrawer === 'onlinegames'}),
       h(InfoDrawer, {
         show: openDrawer === 'info',
         gameTree,

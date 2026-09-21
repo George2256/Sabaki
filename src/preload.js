@@ -41,6 +41,11 @@ ipcRenderer.on('setting:change', (_, data) => {
 })
 
 window.sabaki = {
+  onlineGames: {
+    list: () => ipcRenderer.invoke('onlineGames:list'),
+    search: (input) => ipcRenderer.invoke('onlineGames:search', input),
+    download: (input) => ipcRenderer.invoke('onlineGames:download', input),
+  },
   // Settings - sync get with cache, async set
   setting: {
     get: (key) => {

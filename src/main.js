@@ -197,6 +197,17 @@ function setupWindowEventForwarding(win) {
 }
 
 function setupIpcHandlers() {
+  const onlineGames = require('./online-games').createService()
+  for (const method of ['list', 'search', 'download']) {
+    ipcMain.handle(`onlineGames:${method}`, async (_, input) => {
+      try {
+        return {ok: true, data: await onlineGames[method](input)}
+      } catch (error) {
+        return {ok: false, error: error.message}
+      }
+    })
+  }
+
   // App info
   ipcMain.handle('app:getName', () => app.name)
   ipcMain.handle('app:getVersion', () => app.getVersion())
