@@ -181,6 +181,8 @@ export default class MainView extends Component {
         {id: 'bar'},
         h(PlayBar, {
           mode,
+          engineGameOngoing: this.props.engineGameOngoing,
+          batchAnalysisRunning: !!this.props.batchAnalysis?.running,
           engineSyncers: [
             this.props.blackEngineSyncerId,
             this.props.whiteEngineSyncerId,

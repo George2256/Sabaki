@@ -7,8 +7,9 @@ const {
   nativeImage,
   BrowserWindow,
   Menu,
+  net,
 } = require('electron')
-const {resolve} = require('path')
+const {resolve, join} = require('path')
 const i18n = require('./i18n')
 const setting = require('./setting')
 const updater = require('./updater')
@@ -197,6 +198,48 @@ function setupWindowEventForwarding(win) {
 }
 
 function setupIpcHandlers() {
+  const setSettingAndNotify = (key, value) => {
+    setting.set(key, value)
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed())
+        window.webContents.send('setting:change', {key, value})
+    }
+  }
+  const engineSetup = require('./engine-setup').createService({
+    directory: join(setting.userDataDirectory, 'automatic-engine'),
+    fetch: (url, options) => net.fetch(url, options),
+    register: (engine) => {
+      const engines = setting.get('engines.list')
+      const index = engines.findIndex((entry) => entry.path === engine.path)
+      const updated = engines.slice()
+      if (index < 0) updated.push(engine)
+      else updated[index] = {...updated[index], ...engine}
+      setSettingAndNotify('engines.list', updated)
+    },
+  })
+  engineSetup.on('change', (state) => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed())
+        window.webContents.send('engineSetup:change', state)
+    }
+  })
+  engineSetup.on('diagnostic', (error) => {
+    if (error.name !== 'AbortError')
+      console.error('[engine setup]', error.message, error.detail || '')
+  })
+  for (const method of ['status', 'install', 'cancel']) {
+    ipcMain.handle(`engineSetup:${method}`, async () => {
+      try {
+        return {ok: true, data: await engineSetup[method]()}
+      } catch (error) {
+        return {ok: false, error: engineSetup.state.error || error.message}
+      }
+    })
+  }
+  app.on('before-quit', () => {
+    engineSetup.cancel()
+  })
+
   const onlineGames = require('./online-games').createService()
   for (const method of ['list', 'search', 'download']) {
     ipcMain.handle(`onlineGames:${method}`, async (_, input) => {
@@ -323,11 +366,7 @@ function setupIpcHandlers() {
 
   // Settings - for renderer access
   ipcMain.handle('setting:set', (e, key, value) => {
-    setting.set(key, value)
-    // Notify all windows of the change
-    BrowserWindow.getAllWindows().forEach((win) => {
-      win.webContents.send('setting:change', {key, value})
-    })
+    setSettingAndNotify(key, value)
     return true
   })
 

@@ -1,5 +1,9 @@
 # Engines
 
+For Apple silicon Macs running macOS 15 or later, use
+[Automatic Engine Setup](../automatic-engine.md) to prepare KataGo and analyze a
+game without entering paths or command-line arguments.
+
 You can add Go engines to Sabaki to play offline against an AI opponent. Sabaki
 then acts as a graphical UI for any Go software that supports
 [GTP (Go Text Protocol)](https://www.lysator.liu.se/~gunnar/gtp/).

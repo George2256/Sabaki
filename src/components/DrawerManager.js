@@ -3,6 +3,7 @@ import sabaki from '../modules/sabaki.js'
 import {getRootProperty} from '../modules/gametree.js'
 
 import OnlineGamesDrawer from './drawers/OnlineGamesDrawer.js'
+import EngineSetupDrawer from './drawers/EngineSetupDrawer.js'
 
 import InfoDrawer from './drawers/InfoDrawer.js'
 import ScoreDrawer from './drawers/ScoreDrawer.js'
@@ -86,6 +87,7 @@ export default class DrawerManager extends Component {
       'section',
       {},
       h(OnlineGamesDrawer, {show: openDrawer === 'onlinegames'}),
+      h(EngineSetupDrawer, {show: openDrawer === 'enginesetup'}),
       h(InfoDrawer, {
         show: openDrawer === 'info',
         gameTree,

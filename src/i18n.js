@@ -71,6 +71,9 @@ function loadStrings(strings) {
     ...(require('./batch-analysis-strings')[appLang]
       ? {BatchAnalysis: require('./batch-analysis-strings')[appLang]}
       : {}),
+    ...(require('./engine-setup-strings')[appLang]
+      ? {EngineSetup: require('./engine-setup-strings')[appLang]}
+      : {}),
     ...(require('./online-games/strings')[appLang]
       ? {OnlineGames: require('./online-games/strings')[appLang]}
       : {}),

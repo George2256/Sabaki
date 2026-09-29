@@ -488,6 +488,19 @@ exports.get = function (props = {}) {
       label: i18n.t('menu.engines', 'Eng&ines'),
       submenu: [
         {
+          label: i18n.t(
+            'EngineSetup',
+            batchAnalysisRunning ? 'Stop analysis' : 'Analyze this game',
+          ),
+          enabled: !engineGameOngoing,
+          click: () => sabaki.analyzeGame(),
+        },
+        {
+          label: i18n.t('EngineSetup', 'Automatic engine setup…'),
+          click: () => sabaki.openEngineSetup(),
+        },
+        {type: 'separator'},
+        {
           label: i18n.t('menu.engines', 'Show &Engines Sidebar'),
           type: 'checkbox',
           checked: !!showLeftSidebar,
@@ -515,13 +528,7 @@ exports.get = function (props = {}) {
                 .map((syncer) => syncer.id)[0]
 
             if (syncerId == null) {
-              dialog.showMessageBox(
-                i18n.t(
-                  'menu.engines',
-                  'None of the attached engines support analysis.',
-                ),
-                'info',
-              )
+              sabaki.openEngineSetup()
               return
             }
 

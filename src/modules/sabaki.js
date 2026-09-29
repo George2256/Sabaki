@@ -401,6 +401,7 @@ class Sabaki extends EventEmitter {
   }
 
   openDrawer(drawer) {
+    if (drawer !== 'enginesetup') this.engineSetupRequest = null
     this.setState({openDrawer: drawer})
   }
 
@@ -1810,6 +1811,92 @@ class Sabaki extends EventEmitter {
 
   // Engine Management
 
+  openEngineSetup({analyze = false} = {}) {
+    this.engineSetupRequest = Symbol('engine setup')
+    this.automaticAnalysisIntent = analyze
+      ? {
+          tree: this.inferredState.gameTree,
+          ids: [
+            ...this.inferredState.gameTree.listCurrentNodes(
+              this.state.gameCurrents[this.state.gameIndex],
+            ),
+          ].map((node) => node.id),
+        }
+      : null
+    this.openDrawer('enginesetup')
+  }
+
+  cancelEngineSetup() {
+    this.automaticAnalysisIntent = null
+    this.closeDrawer()
+    return window.sabaki.engineSetup.cancel()
+  }
+
+  async analyzeGame() {
+    if (this.batchAnalysisJob) return this.stopBatchAnalysis()
+    if (this.state.engineGameOngoing != null) {
+      await dialog.showMessageBox(
+        i18n.t('EngineSetup', 'Stop the engine game before analyzing.'),
+        'info',
+      )
+      return
+    }
+    const attached = this.state.attachedEngineSyncers.some(
+      (syncer) =>
+        !syncer.suspended &&
+        setting
+          .get('engines.analyze_commands')
+          .some((command) => syncer.commands.includes(command)),
+    )
+    if (attached) return this.startBatchAnalysis()
+    this.openEngineSetup({analyze: true})
+  }
+
+  async finishEngineSetup(engine) {
+    if (this.connectingAutomaticEngine) return
+    this.connectingAutomaticEngine = true
+    const intent = this.automaticAnalysisIntent
+    const request = this.engineSetupRequest
+    let syncer
+    try {
+      syncer = this.state.attachedEngineSyncers.find(
+        (entry) => entry.engine.path === engine.path && !entry.suspended,
+      )
+      if (!syncer) [syncer] = this.attachEngines([engine])
+      const response = await engineOperation(
+        syncer,
+        syncer.queueCommand({name: 'list_commands', args: []}),
+        180000,
+      )
+      if (
+        response.error ||
+        !response.content.split('\n').includes('kata-analyze')
+      )
+        throw new Error('Unable to connect the engine. Please retry.')
+      if (
+        this.state.openDrawer !== 'enginesetup' ||
+        request !== this.engineSetupRequest
+      )
+        return
+      const tree = this.inferredState.gameTree
+      const ids = [
+        ...tree.listCurrentNodes(this.state.gameCurrents[this.state.gameIndex]),
+      ].map((node) => node.id)
+      if (intent && (tree !== intent.tree || !helper.equals(ids, intent.ids)))
+        throw new Error(
+          'The game changed during setup. Click Analyze this game again to analyze the current game.',
+        )
+      this.automaticAnalysisIntent = null
+      this.closeDrawer()
+      if (intent) this.startBatchAnalysis()
+    } catch (error) {
+      if (syncer) await this.detachEngines([syncer.id])
+      throw error
+    } finally {
+      this.connectingAutomaticEngine = false
+    }
+  }
+
   handleCommandSent({syncer, command, subscribe, getResponse}) {
     let t = i18n.context('sabaki.engine')
     let entry = {name: syncer.engine.name, command, waiting: true}
@@ -2358,10 +2445,7 @@ class Sabaki extends EventEmitter {
       candidates.find((s) => s.id === this.lastAnalyzingEngineSyncerId) ||
       candidates[0]
     if (!syncer) {
-      await dialog.showMessageBox(
-        t('Attach an analysis-capable engine first.'),
-        'info',
-      )
+      this.openEngineSetup({analyze: true})
       return
     }
     this.stopAnalysis()

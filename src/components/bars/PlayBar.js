@@ -200,6 +200,19 @@ export default class PlayBar extends Component {
       ),
 
       h(
+        'button',
+        {
+          type: 'button',
+          class: 'analyze-game',
+          disabled: this.props.engineGameOngoing != null,
+          onClick: () => sabaki.analyzeGame(),
+        },
+        this.props.batchAnalysisRunning
+          ? i18n.t('EngineSetup', 'Stop analysis')
+          : i18n.t('EngineSetup', 'Analyze this game'),
+      ),
+
+      h(
         'a',
         {
           ref: (el) => (this.menuButtonElement = el),

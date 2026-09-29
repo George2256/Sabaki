@@ -757,6 +757,15 @@ class EnginesTab extends Component {
       'div',
       {ref: (el) => (this.element = el), class: 'engines'},
       h(
+        'p',
+        {class: 'automatic-engine-entry'},
+        h(
+          'button',
+          {type: 'button', onClick: () => sabaki.openEngineSetup()},
+          i18n.t('EngineSetup', 'Automatic engine setup…'),
+        ),
+      ),
+      h(
         'div',
         {class: 'gtpconsolelog'},
         h(

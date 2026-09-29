@@ -41,6 +41,16 @@ ipcRenderer.on('setting:change', (_, data) => {
 })
 
 window.sabaki = {
+  engineSetup: {
+    status: () => ipcRenderer.invoke('engineSetup:status'),
+    install: () => ipcRenderer.invoke('engineSetup:install'),
+    cancel: () => ipcRenderer.invoke('engineSetup:cancel'),
+    onChange: (callback) => {
+      const listener = (_, state) => callback(state)
+      ipcRenderer.on('engineSetup:change', listener)
+      return () => ipcRenderer.removeListener('engineSetup:change', listener)
+    },
+  },
   onlineGames: {
     list: () => ipcRenderer.invoke('onlineGames:list'),
     search: (input) => ipcRenderer.invoke('onlineGames:search', input),

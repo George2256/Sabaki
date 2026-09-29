@@ -92,12 +92,14 @@
       "!ci${/*}",
       "!src/{components,modules}${/*}",
       "!engines",
+      "!{.engine-cache,e2e,test-results,playwright-report,blob-report}/**/*",
       "!node_modules",
       "node_modules/@primer/octicons/build/svg/*",
       "node_modules/@sabaki/deadstones/wasm/*",
       "node_modules/@sabaki/shudan/css/*",
       "node_modules/@sabaki/i18n/**/*",
       "node_modules/dolm/**/*",
+      "node_modules/argv-split/**/*",
       "node_modules/{iconv-lite,safer-buffer}/**/*",
       "node_modules/pikaday/css/*"
     ]

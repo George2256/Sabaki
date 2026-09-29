@@ -22,6 +22,8 @@
 - [GTP engines](https://github.com/SabakiHQ/Sabaki/blob/master/docs/guides/engines.md)
   support with
   [board analysis for supported engines](https://github.com/SabakiHQ/Sabaki/blob/master/docs/guides/engine-analysis-integration.md)
+- [Automatic KataGo setup](docs/automatic-engine.md) and game analysis on Apple
+  silicon Macs (macOS 15 or later), with domestic download mirrors
 - Guess mode
 - Autoplay games
 

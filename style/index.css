@@ -122,6 +122,15 @@ header {
   header .menu {
     width: 32px;
   }
+  header .analyze-game {
+    flex: none;
+    align-self: center;
+    margin: 0 8px;
+    padding: 4px 10px;
+    font-size: 12px;
+    line-height: 20px;
+  }
+  header .analyze-game:disabled { opacity: .45; }
   header .menu:hover, header .menu:focus {
     background: #222;
   }
@@ -1445,6 +1454,35 @@ header {
 .shudan-vertex.shudan-marker_point .shudan-marker {
   background: transparent !important;
 }
+
+/* Automatic engine setup follows the existing drawer palette. */
+#enginesetup {
+  box-sizing: border-box;
+  padding: 28px;
+  width: min(520px, 100%);
+  height: auto;
+  max-height: calc(100% - 32px);
+  left: auto;
+  right: 16px;
+  top: 16px;
+  bottom: auto;
+  overflow: auto;
+  transform: translateY(-110%);
+}
+#enginesetup.show { transform: translateY(0); }
+#enginesetup.hidecontent { display: none; }
+#enginesetup h2 { margin: 0 0 16px; }
+#enginesetup p { line-height: 1.6; }
+#enginesetup .engine-setup-steps { display: flex; gap: 8px; padding: 0; list-style: none; margin: 24px 0; }
+#enginesetup .engine-setup-steps li { flex: 1; padding: 8px 0; opacity: .45; border-top: 2px solid currentColor; }
+#enginesetup .engine-setup-steps .current { opacity: 1; color: #6eb6ff; }
+#enginesetup .engine-setup-steps .complete { opacity: .8; }
+#enginesetup .engine-setup-status { min-height: 28px; }
+#enginesetup progress { width: 100%; margin: 12px 0; accent-color: #0082f0; }
+#enginesetup .engine-setup-note { font-size: .9em; opacity: .65; }
+#enginesetup .engine-setup-error { color: #ffb4a6; }
+#enginesetup .engine-setup-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+#enginesetup button:disabled { opacity: .45; cursor: default; }
 
 /* Online records share the existing drawer palette and native form controls. */
 #onlinegames {
