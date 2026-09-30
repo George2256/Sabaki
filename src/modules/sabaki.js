@@ -24,6 +24,7 @@ import {
   snapshot as teachingSnapshot,
   fingerprint as teachingFingerprint,
 } from '../teaching/position.js'
+import {scanGraph, graphForNodes} from '../teaching/graph.js'
 
 deadstones.useFetch('./node_modules/@sabaki/deadstones/wasm/deadstones_bg.wasm')
 
@@ -103,6 +104,7 @@ class Sabaki extends EventEmitter {
       sidebarTab: 'record',
       teachingReview: null,
       teachingPosition: null,
+      teachingGraphActive: false,
       graphGridSize: null,
       graphNodeSize: null,
 
@@ -289,7 +291,8 @@ class Sabaki extends EventEmitter {
         return (
           state.showGameGraph ||
           state.showCommentBox ||
-          state.showTeachingReview
+          state.showTeachingReview ||
+          (state.showWinrateGraph && this.teachingGraph != null)
         )
       },
       get gameInfo() {
@@ -315,7 +318,17 @@ class Sabaki extends EventEmitter {
           (syncer) => syncer.id === state.analyzingEngineSyncerId,
         )
       },
+      get teachingGraph() {
+        if (!state.teachingGraphActive) return null
+        return graphForNodes(state.teachingPosition, state.teachingReview, [
+          ...this.gameTree.listCurrentNodes(
+            state.gameCurrents[state.gameIndex],
+          ),
+        ])
+      },
       get winrateData() {
+        const graph = this.teachingGraph
+        if (graph) return graph.winrate
         return [
           ...this.gameTree.listCurrentNodes(
             state.gameCurrents[state.gameIndex],
@@ -323,6 +336,8 @@ class Sabaki extends EventEmitter {
         ].map((x) => x.data.SBKV && +x.data.SBKV[0])
       },
       get scoreLeadData() {
+        const graph = this.teachingGraph
+        if (graph) return graph.scoreLead
         return [
           ...this.gameTree.listCurrentNodes(
             state.gameCurrents[state.gameIndex],
@@ -435,11 +450,15 @@ class Sabaki extends EventEmitter {
       this.teachingFingerprint = teachingFingerprint(position)
       this.setState({
         teachingPosition: position,
+        teachingGraphActive: true,
+        showWinrateGraph: true,
         teachingReview: {
           phase: 'preparing',
           running: true,
           cards: [],
           stale: false,
+          rootId: position.rootId,
+          graph: scanGraph([], position.moves.length + 1),
         },
       })
       const response = await window.sabaki.teaching.start({
@@ -2320,6 +2339,7 @@ class Sabaki extends EventEmitter {
 
     let synced = await this.syncEngine(syncerId, treePosition)
     if (!synced) return
+    this.setState({teachingGraphActive: false})
 
     let {gameTree: tree, board} = this.inferredState
     let coord
@@ -2445,6 +2465,7 @@ class Sabaki extends EventEmitter {
       return
     } else {
       this.setState((state) => ({
+        teachingGraphActive: false,
         blackEngineSyncerId:
           state.blackEngineSyncerId == null
             ? state.attachedEngineSyncers[0].id
@@ -2573,7 +2594,10 @@ class Sabaki extends EventEmitter {
     }
 
     this.lastAnalyzingEngineSyncerId = syncerId
-    this.setState({analyzingEngineSyncerId: syncerId})
+    this.setState({
+      analyzingEngineSyncerId: syncerId,
+      teachingGraphActive: false,
+    })
 
     if (
       !this.state.engineGameOngoing ||
@@ -2649,6 +2673,7 @@ class Sabaki extends EventEmitter {
       },
       showWinrateGraph: true,
       showGameGraph: true,
+      teachingGraphActive: false,
     })
     const checkTree = () => {
       const current = this.inferredState.gameTree

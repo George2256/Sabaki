@@ -3,6 +3,7 @@ import classNames from 'classnames'
 import i18n from '../../i18n.js'
 import sabaki from '../../modules/sabaki.js'
 import {noop} from '../../modules/helper.js'
+import {t as teachingText} from '../../teaching/strings.js'
 
 const t = i18n.context('WinrateGraph')
 const batchT = i18n.context('BatchAnalysis')
@@ -98,12 +99,16 @@ export default class WinrateGraph extends Component {
       analysisType,
       batchAnalysis,
       teachingRunning,
+      teachingGraph,
     },
     {invert},
   ) {
     return (
       batchAnalysis !== this.props.batchAnalysis ||
       teachingRunning !== this.props.teachingRunning ||
+      teachingGraph?.completed !== this.props.teachingGraph?.completed ||
+      teachingGraph?.total !== this.props.teachingGraph?.total ||
+      teachingGraph?.phase !== this.props.teachingGraph?.phase ||
       data.length !== this.props.data.length ||
       data.some((value, index) => value !== this.props.data[index]) ||
       lastPlayer !== this.props.lastPlayer ||
@@ -147,6 +152,7 @@ export default class WinrateGraph extends Component {
       analysisType,
       batchAnalysis,
       teachingRunning,
+      teachingGraph,
     } = this.props
     let {invert} = this.state
     let blunderThreshold =
@@ -221,9 +227,11 @@ export default class WinrateGraph extends Component {
         h(
           'span',
           {role: 'status'},
-          batchAnalysis
-            ? `${batchT(batchAnalysis.running ? 'Analyzing' : batchAnalysis.completed === batchAnalysis.total ? 'Complete' : 'Stopped')} ${batchAnalysis.completed}/${batchAnalysis.total}`
-            : batchT('Current branch'),
+          teachingGraph
+            ? `${teachingText(setting.get('app.lang'), 'graphSource')} ${teachingText(setting.get('app.lang'), teachingGraph.phase === 'canceled' ? 'canceled' : teachingGraph.phase === 'failed' ? 'failed' : teachingGraph.completed === teachingGraph.total ? 'complete' : 'scanning')} ${teachingGraph.completed}/${teachingGraph.total}`
+            : batchAnalysis
+              ? `${batchT(batchAnalysis.running ? 'Analyzing' : batchAnalysis.completed === batchAnalysis.total ? 'Complete' : 'Stopped')} ${batchAnalysis.completed}/${batchAnalysis.total}`
+              : batchT('Current branch'),
         ),
         h(
           'button',

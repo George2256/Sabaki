@@ -1,4 +1,5 @@
 const en = {
+  graphSource: 'Teaching scan',
   coachPressure:
     'In {diagram}, step {step}, {player} plays {move} and reduces the original {opponent} group at {target} from {before} to {after} liberties. Notice which escape or connection point is being removed. Read a direct answer and a counterattack before deciding whether to defend; fewer liberties alone do not prove a forced result.',
   coachLibertyChoice:
@@ -154,6 +155,7 @@ const en = {
   skipped: '{count} moments lacked sufficient evidence.',
 }
 const zh = {
+  graphSource: '教学扫描',
   coachPressure:
     '看{diagram}第 {step} 步：{player}下在 {move}，让原来 {target} 处的{opponent}棋块从 {before} 气减少到 {after} 气。注意对方封住了哪一个逃出或连接的位置，再比较直接应和反击。气减少说明活动余地受到限制，但不能直接判定后续是被迫的。',
   coachLibertyChoice:
@@ -302,6 +304,7 @@ const zh = {
 // Traditional strings share technical names and have their own UI vocabulary.
 const hant = {
   ...zh,
+  graphSource: '教學掃描',
   learner: '學員棋力',
   beginner: '剛入門',
   learnerNote: '棋力按自我評估選擇，用於調整講解深度；引擎仍按完整棋力分析。',

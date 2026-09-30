@@ -10,6 +10,7 @@ const {budgets, selectMoments, verifyMoment} = require('./review')
 const {validateConfig, explain, referencePatterns} = require('./llm')
 const {t} = require('./strings')
 const {learnerProfile} = require('./learner')
+const {scanGraph} = require('./graph')
 
 async function hashModel(filename, signal) {
   const hash = createHash('sha256')
@@ -94,6 +95,7 @@ class TeachingService extends EventEmitter {
       error: null,
       llmFallback: false,
       reused: 0,
+      graph: scanGraph([], job.position.moves.length + 1),
     })
     job.promise = this.run(job)
       .catch((error) => {
@@ -185,6 +187,7 @@ class TeachingService extends EventEmitter {
       phase: 'scanning',
       completed: scan.length,
       reused: scan.length,
+      graph: scanGraph(scan, job.position.moves.length + 1),
     })
     for (let turn = scan.length; turn <= job.position.moves.length; turn++) {
       const result = await client.analyze(job.position, turn, {
@@ -200,7 +203,10 @@ class TeachingService extends EventEmitter {
         throw new Error('illegal-variation')
       scan.push(result)
       cache.scan.push(structuredClone(result))
-      this.update({completed: turn + 1})
+      this.update({
+        completed: turn + 1,
+        graph: scanGraph(scan, job.position.moves.length + 1),
+      })
     }
     const moments = selectMoments(job.position, scan, 5, job.learner)
     this.update({

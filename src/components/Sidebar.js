@@ -128,6 +128,7 @@ export default class Sidebar extends Component {
       sidebarTab,
       teachingReview,
       teachingPosition,
+      teachingGraph,
       engineGameOngoing,
 
       graphGridSize,
@@ -148,7 +149,9 @@ export default class Sidebar extends Component {
       batchAnalysis?.rootId === gameTree.root.id ? batchAnalysis : null
     showWinrateGraph =
       showWinrateGraph &&
-      (batchAnalysis != null || winrateData.some((x) => x != null))
+      (teachingGraph != null ||
+        batchAnalysis != null ||
+        winrateData.some((x) => x != null))
 
     return h(
       'section',
@@ -167,6 +170,9 @@ export default class Sidebar extends Component {
         sideContent: h(WinrateGraph, {
           batchAnalysis,
           teachingRunning: !!teachingReview?.running,
+          teachingGraph: teachingGraph
+            ? {...teachingGraph, phase: teachingReview.phase}
+            : null,
           lastPlayer,
           width: winrateGraphWidth,
           data: analysisType === 'winrate' ? winrateData : scoreLeadData,
@@ -309,8 +315,14 @@ export default class Sidebar extends Component {
   }
 }
 
-Sidebar.getDerivedStateFromProps = function ({showWinrateGraph, winrateData}) {
+Sidebar.getDerivedStateFromProps = function ({
+  showWinrateGraph,
+  winrateData,
+  teachingGraph,
+}) {
   return {
-    showWinrateGraph: showWinrateGraph && winrateData.some((x) => x != null),
+    showWinrateGraph:
+      showWinrateGraph &&
+      (teachingGraph != null || winrateData.some((x) => x != null)),
   }
 }

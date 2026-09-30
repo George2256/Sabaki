@@ -21,6 +21,7 @@ import {createService} from '../src/teaching/service.js'
 import {groups, describeLine, enrichLesson} from '../src/teaching/facts.js'
 import {learnerProfile} from '../src/teaching/learner.js'
 import {localExplanation} from '../src/teaching/coach.js'
+import {scanGraph, graphForNodes} from '../src/teaching/graph.js'
 
 const source = '(;SZ[9]KM[7.5]RU[Chinese]C[keep this];B[ai];W[cc];B[gg];W[])'
 function position(content = source) {
@@ -330,6 +331,45 @@ describe('teaching evidence and process boundaries', function () {
       },
     }
   }
+  it('maps final black root estimates to SGF boards including root moves, passes and comment nodes', () => {
+    const {tree, value} = position(
+      '(;SZ[9]KM[7.5]RU[Chinese]B[ai]SBKV[99];C[after root];W[];C[after pass];B[gg])',
+    )
+    const scan = [
+      {
+        root: {winrate: 0.751234, scoreLead: 8.12345},
+        candidates: [{winrate: 0.99, scoreLead: 40}],
+      },
+      {root: {winrate: 0.42, scoreLead: 2}},
+      {root: {winrate: 0.5, scoreLead: 0}},
+    ]
+    const graph = scanGraph(scan, value.moves.length + 1)
+    assert.deepEqual(graph.winrate, [75.12, 42, 50, null])
+    assert.deepEqual(graph.scoreLead, [8.12345, 2, 0, null])
+    const nodes = [...tree.listCurrentNodes({})]
+    const review = {rootId: value.rootId, graph}
+    const mapped = graphForNodes(value, review, nodes)
+    assert.deepEqual(mapped.winrate, [42, 42, 50, 50, null])
+    assert.deepEqual(mapped.scoreLead, [2, 2, 0, 0, null])
+    assert.equal(graphForNodes(value, {...review, stale: true}, nodes), null)
+    assert.equal(
+      graphForNodes(value, {...review, rootId: 'other'}, nodes),
+      null,
+    )
+    assert.equal(graphForNodes(value, review, nodes.slice(0, -1)), null)
+    const sibling = nodes.map((node, i) =>
+      i === nodes.length - 1 ? {...node, id: 'other-branch'} : node,
+    )
+    assert.equal(graphForNodes(value, review, sibling), null)
+    const {tree: normalTree, value: normal} = position()
+    const normalGraph = scanGraph([{root: {winrate: 0.75, scoreLead: 8}}], 5)
+    const origin = graphForNodes(
+      normal,
+      {rootId: normal.rootId, graph: normalGraph},
+      [...normalTree.listCurrentNodes({})],
+    )
+    assert.deepEqual(origin.winrate, [75, null, null, null, null])
+  })
   it('resumes an interrupted scan from the first unfinished position', async () => {
     const {service, calls} = countedService()
     const input = {position: position().value, engineIndex: 0, budget: 'quick'}
@@ -342,6 +382,9 @@ describe('teaching evidence and process boundaries', function () {
     await service.job.promise
     assert.equal(service.state.phase, 'canceled')
     assert.equal(service.cache.scan.length, 2)
+    assert.deepEqual(service.state.graph.winrate, [75, 42, null, null, null])
+    assert.deepEqual(service.state.graph.scoreLead, [8, 2, null, null, null])
+    assert.equal(service.state.graph.completed, 2)
     service.removeListener('change', stop)
     const before = calls.length
     service.start(input)
@@ -349,6 +392,10 @@ describe('teaching evidence and process boundaries', function () {
     assert.equal(service.state.phase, 'complete')
     assert.equal(calls[before].turn, 2)
     assert.equal(calls.filter((c) => c.options.visits === 100).length, 5)
+    assert.deepEqual(service.state.graph.winrate, [75, 42, 42, 42, 42])
+    assert.deepEqual(service.state.graph.scoreLead, [8, 2, 2, 2, 2])
+    assert.equal(service.state.graph.completed, 5)
+    assert.equal(service.state.graph.total, 5)
     assert(service.state.reused >= 2)
     assert.equal(service.state.cards.length, 1)
   })

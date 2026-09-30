@@ -4,6 +4,7 @@ const {
   loadSgfStringAndWait,
   attachAndWaitForEngines,
   detachAndWait,
+  waitForRender,
 } = require('./helpers')
 const path = require('path')
 const fs = require('fs')
@@ -29,6 +30,161 @@ async function prepare(page, testInfo, slow = false, sgf = source) {
   )
   await expect(page.locator('#teaching-review .teaching-start')).toBeEnabled()
 }
+
+async function graphState(page) {
+  return page.evaluate(() => {
+    const s = window.__sabaki
+    return {
+      phase: s.state.teachingReview?.phase,
+      graph: s.state.teachingReview?.graph,
+      winrate: s.inferredState.winrateData,
+      scoreLead: s.inferredState.scoreLeadData,
+      root: JSON.stringify(s.inferredState.gameTree.root),
+    }
+  })
+}
+
+async function setGraphMetric(page, metric) {
+  await page.evaluate(
+    (value) => window.sabaki.setting.set('board.analysis_type', value),
+    metric,
+  )
+  await page.waitForFunction(
+    (value) => window.__sabaki.state.analysisType === value,
+    metric,
+  )
+  await waitForRender(page)
+}
+
+async function goToGraphNode(page, index) {
+  await page.evaluate((i) => {
+    const s = window.__sabaki
+    const nodes = [
+      ...s.inferredState.gameTree.listCurrentNodes(
+        s.state.gameCurrents[s.state.gameIndex],
+      ),
+    ]
+    s.setCurrentTreePosition(s.inferredState.gameTree, nodes[i].id)
+  }, index)
+  await waitForRender(page)
+}
+
+test('draws partial teaching results without SGF properties, retains them on stop and resumes the curve', async ({
+  page,
+}, testInfo) => {
+  await prepare(page, testInfo, true)
+  const original = await page.evaluate(() => ({
+    root: JSON.stringify(window.__sabaki.inferredState.gameTree.root),
+    position: window.__sabaki.state.treePosition,
+    values: window.__sabaki.inferredState.winrateData,
+  }))
+  expect(original.values.every((value) => value == null)).toBe(true)
+  await page.locator('.teaching-start').click()
+  await page.waitForFunction(() => {
+    const review = window.__sabaki.state.teachingReview
+    return review?.phase === 'scanning' && review.graph?.completed >= 2
+  })
+  await expect(page.locator('#winrategraph')).toBeVisible()
+  await expect(
+    page.locator('#winrategraph svg path[stroke="#eee"]'),
+  ).toHaveAttribute('d', /M 0,75 L 1,42/)
+  await page.locator('.teaching-start').click()
+  await page.waitForFunction(
+    () => !window.__sabaki.state.teachingReview.running,
+  )
+  const stopped = await graphState(page)
+  expect(stopped.phase).toBe('canceled')
+  expect(stopped.graph.total).toBe(5)
+  expect(stopped.graph.completed).toBeGreaterThanOrEqual(2)
+  expect(stopped.graph.completed).toBeLessThan(5)
+  expect(stopped.graph.winrate).toHaveLength(5)
+  expect(stopped.graph.scoreLead).toHaveLength(5)
+  expect(stopped.graph.winrate.slice(0, stopped.graph.completed)).toEqual([
+    75,
+    ...Array(stopped.graph.completed - 1).fill(42),
+  ])
+  expect(stopped.graph.winrate.slice(stopped.graph.completed)).toEqual(
+    Array(5 - stopped.graph.completed).fill(null),
+  )
+  expect(stopped.winrate).toEqual(stopped.graph.winrate)
+  expect(stopped.scoreLead).toEqual(stopped.graph.scoreLead)
+  expect(stopped.root).toBe(original.root)
+  expect(await page.evaluate(() => window.__sabaki.state.treePosition)).toBe(
+    original.position,
+  )
+
+  // Closing the teaching panel does not discard the active curve.
+  await page.locator('.teaching-close').click()
+  await expect(page.locator('#teaching-review')).toBeHidden()
+  await expect(page.locator('#winrategraph')).toBeVisible()
+  expect((await graphState(page)).winrate).toEqual(stopped.winrate)
+  await page.evaluate(() => window.__sabaki.openTeachingReview())
+  await expect(page.locator('.teaching-start')).toHaveText('继续讲解当前分支')
+  await page.locator('.teaching-start').click()
+  await page.waitForFunction((completed) => {
+    const review = window.__sabaki.state.teachingReview
+    return review?.graph?.completed >= completed && review.reused >= completed
+  }, stopped.graph.completed)
+  await page.waitForFunction(
+    () => window.__sabaki.state.teachingReview.phase === 'complete',
+  )
+  const complete = await graphState(page)
+  expect(complete.graph.completed).toBe(5)
+  expect(complete.graph.total).toBe(5)
+  expect(complete.winrate).toEqual([75, 42, 42, 42, 42])
+  expect(complete.scoreLead).toEqual([8, 2, 2, 2, 2])
+  expect(complete.root).toBe(original.root)
+  await expect(
+    page.locator('#winrategraph svg path[stroke="#eee"]'),
+  ).toHaveAttribute('d', 'M 0,75 L 1,42 L 2,42 L 3,42 L 4,42')
+})
+
+test('maps teaching positions across comment nodes and displays both metrics in each player perspective', async ({
+  page,
+}, testInfo) => {
+  await prepare(
+    page,
+    testInfo,
+    false,
+    '(;GM[1]SZ[9]KM[7.5]RU[Chinese];C[before play];B[ai];C[after black];W[cc];C[after white];B[gg];W[])',
+  )
+  const original = await page.evaluate(() =>
+    JSON.stringify(window.__sabaki.inferredState.gameTree.root),
+  )
+  await page.locator('.teaching-start').click()
+  await page.waitForFunction(
+    () => window.__sabaki.state.teachingReview.phase === 'complete',
+  )
+  const result = await graphState(page)
+  expect(result.graph.winrate).toEqual([75, 42, 42, 42, 42])
+  expect(result.graph.scoreLead).toEqual([8, 2, 2, 2, 2])
+  expect(result.winrate).toEqual([75, 75, 42, 42, 42, 42, 42, 42])
+  expect(result.scoreLead).toEqual([8, 8, 2, 2, 2, 2, 2, 2])
+  expect(result.root).toBe(original)
+
+  const main = page.locator('#winrategraph .main')
+  const player = page.locator('#winrategraph .winrate-strip img.player')
+  const line = page.locator('#winrategraph svg path[stroke="#eee"]')
+  await goToGraphNode(page, 2) // First black move, after an annotation node.
+  await expect(main).toHaveText('42%')
+  await expect(player).toHaveAttribute('src', './img/ui/black.svg')
+  await expect(line).toHaveAttribute('d', /M 0,75 L 1,75 L 2,42 L 3,42/)
+  await setGraphMetric(page, 'scoreLead')
+  await expect(main).toHaveText('+2')
+  // Score lead uses its native units and the existing graph scale (20 points).
+  await expect(line).toHaveAttribute('d', /M 0,70 L 1,70 L 2,55 L 3,55/)
+  await goToGraphNode(page, 4)
+  await expect(main).toHaveText('-2')
+  await expect(player).toHaveAttribute('src', './img/ui/white.svg')
+  await setGraphMetric(page, 'winrate')
+  await expect(main).toHaveText('58%')
+  await goToGraphNode(page, 5) // Annotation preserves the same board value.
+  expect((await graphState(page)).winrate[5]).toBe(42)
+  expect(
+    await page.evaluate(() => window.__sabaki.state.teachingReview.stale),
+  ).toBe(false)
+  expect((await graphState(page)).root).toBe(original)
+})
 test('shows three verified diagrams without changing SGF, navigation or comments', async ({
   page,
 }, testInfo) => {
@@ -93,9 +249,10 @@ test('browsing and comment edits are allowed; loading another game cancels stale
 }, testInfo) => {
   await prepare(page, testInfo, true)
   await page.locator('.teaching-start').click()
-  await page.waitForFunction(
-    () => window.__sabaki.state.teachingReview?.running,
-  )
+  await page.waitForFunction(() => {
+    const review = window.__sabaki.state.teachingReview
+    return review?.phase === 'scanning' && review.graph?.completed >= 1
+  })
   await page.evaluate(() => {
     const s = window.__sabaki
     s.goToMoveNumber(2)
@@ -104,6 +261,10 @@ test('browsing and comment edits are allowed; loading another game cancels stale
   expect(
     await page.evaluate(() => window.__sabaki.state.teachingReview.stale),
   ).toBe(false)
+  expect(
+    await page.evaluate(() => window.__sabaki.state.teachingReview.running),
+  ).toBe(true)
+  expect((await graphState(page)).winrate[0]).toBe(75)
   await page.evaluate(() =>
     window.__sabaki.loadContent('(;SZ[9]KM[7.5]RU[Chinese];B[dd])', 'sgf', {
       suppressAskForSave: true,
@@ -120,6 +281,15 @@ test('browsing and comment edits are allowed; loading another game cancels stale
       () => window.__sabaki.inferredState.gameTree.root.children[0].data.B[0],
     ),
   ).toBe('dd')
+  expect(
+    await page.evaluate(() => window.__sabaki.inferredState.teachingGraph),
+  ).toBeNull()
+  expect((await graphState(page)).winrate.every((value) => value == null)).toBe(
+    true,
+  )
+  expect(
+    (await graphState(page)).scoreLead.every((value) => value == null),
+  ).toBe(true)
   await expect(page.locator('.teaching-card')).toHaveCount(0)
 })
 test('changing to a sibling branch cancels the review and stop supports restarting', async ({
@@ -129,12 +299,18 @@ test('changing to a sibling branch cancels the review and stop supports restarti
     page,
     testInfo,
     true,
-    '(;SZ[9]KM[7.5]RU[Chinese];B[ai](;W[cc])(;W[gg]))',
+    '(;SZ[9]KM[7.5]RU[Chinese]SBKV[13]SBKS[-3];B[ai]SBKV[14]SBKS[-2](;W[cc]SBKV[15]SBKS[-1])(;W[gg]SBKV[16]SBKS[0]))',
   )
+  const original = (await graphState(page)).root
   await page.locator('.teaching-start').click()
-  await page.waitForFunction(
-    () => window.__sabaki.state.teachingReview?.running,
-  )
+  await page.waitForFunction(() => {
+    const review = window.__sabaki.state.teachingReview
+    return review?.phase === 'scanning' && review.graph?.completed >= 2
+  })
+  const scanning = await graphState(page)
+  expect(scanning.winrate.slice(0, 2)).toEqual([75, 42])
+  // Unscanned nodes stay blank rather than mixing in old SGF evaluations.
+  expect(scanning.winrate[2]).toBeNull()
   await page.evaluate(() => {
     const s = window.__sabaki,
       tree = s.inferredState.gameTree
@@ -146,6 +322,13 @@ test('changing to a sibling branch cancels the review and stop supports restarti
   expect(
     await page.evaluate(() => window.__sabaki.state.teachingReview.stale),
   ).toBe(true)
+  const changed = await graphState(page)
+  expect(changed.winrate).toEqual([13, 14, 16])
+  expect(changed.scoreLead).toEqual([-3, -2, 0])
+  expect(changed.root).toBe(original)
+  expect(
+    await page.evaluate(() => window.__sabaki.inferredState.teachingGraph),
+  ).toBeNull()
   await page.locator('.teaching-start').click()
   await page.waitForFunction(() => window.__sabaki.state.teachingReview.running)
   await page.locator('.teaching-start').click()
@@ -179,6 +362,7 @@ test('quick draw protects teaching and a stopped review resumes after drawing', 
         window.__sabaki.state.teachingReview?.phase === 'scanning' &&
         window.__sabaki.state.teachingReview.completed >= 1,
     )
+    expect((await graphState(page)).winrate[0]).toBe(75)
     const draw = page.locator('.batch-analysis-controls button')
     await expect(draw).toBeDisabled()
     await expect(draw).toHaveAttribute('title', /请先停止讲解/)
@@ -207,11 +391,17 @@ test('quick draw protects teaching and a stopped review resumes after drawing', 
     const state = await page.evaluate(() => ({
       teaching: window.__sabaki.state.teachingReview,
       batch: window.__sabaki.state.batchAnalysis,
+      graph: window.__sabaki.inferredState.teachingGraph,
+      values: window.__sabaki.inferredState.winrateData,
     }))
     expect(state.teaching.running).toBe(false)
     expect(state.teaching.phase).toBe('canceled')
     expect(state.batch.completed).toBe(5)
     expect(state.batch.running).toBe(false)
+    expect(state.graph).toBeNull()
+    expect(state.values[0]).toBe(42)
+    expect(state.values[1]).toBeLessThan(15)
+    expect(state.values[2]).toBeGreaterThan(85)
     await page.locator('.teaching-start').click()
     await page.waitForFunction(
       () => window.__sabaki.state.teachingReview?.phase === 'complete',
@@ -221,6 +411,14 @@ test('quick draw protects teaching and a stopped review resumes after drawing', 
     ).toBeGreaterThan(0)
     await expect(page.locator('.teaching-cache')).toContainText('已复用')
     await expect(draw).toBeEnabled()
+    expect((await graphState(page)).winrate).toEqual([75, 42, 42, 42, 42])
+    // Explicit interactive analysis switches back to the GTP/SGF source too.
+    await page.evaluate((id) => window.__sabaki.startAnalysis(id), syncer)
+    expect(
+      await page.evaluate(() => window.__sabaki.inferredState.teachingGraph),
+    ).toBeNull()
+    expect((await graphState(page)).winrate[1]).toBeLessThan(15)
+    await page.evaluate(() => window.__sabaki.stopAnalysis())
   } finally {
     await detachAndWait(page, [syncer])
   }
