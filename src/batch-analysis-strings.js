@@ -1,5 +1,7 @@
 module.exports = {
   'zh-Hans': {
+    'Stop the teaching review before drawing the graph.':
+      '教学讲解正在进行，请先停止讲解再绘制胜率图。',
     'Quick Draw': '快速绘制',
     'Quick Draw Winrate Graph': '快速绘制胜率图',
     'Stop Drawing Winrate Graph': '停止绘制胜率图',
@@ -23,6 +25,8 @@ module.exports = {
       '引擎结束分析，但未返回有效结果。',
   },
   'zh-Hant': {
+    'Stop the teaching review before drawing the graph.':
+      '教學講解正在進行，請先停止講解再繪製勝率圖。',
     'Quick Draw': '快速繪製',
     'Quick Draw Winrate Graph': '快速繪製勝率圖',
     'Stop Drawing Winrate Graph': '停止繪製勝率圖',

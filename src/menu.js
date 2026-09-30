@@ -7,6 +7,7 @@ const {app} = isRenderer
   : require('electron')
 
 const i18n = require('./i18n')
+const {t: teachingText} = require('./teaching/strings')
 const sabaki = isRenderer ? require('./modules/sabaki').default : null
 const dialog = isRenderer ? require('./modules/dialog') : null
 const setting = isRenderer
@@ -490,7 +491,7 @@ exports.get = function (props = {}) {
         {
           label: i18n.t(
             'EngineSetup',
-            batchAnalysisRunning ? 'Stop analysis' : 'Analyze this game',
+            batchAnalysisRunning ? 'Stop analysis' : 'Analyze game',
           ),
           enabled: !engineGameOngoing,
           click: () => sabaki.analyzeGame(),
@@ -592,6 +593,10 @@ exports.get = function (props = {}) {
       id: 'tools',
       label: i18n.t('menu.tools', '&Tools'),
       submenu: [
+        {
+          label: teachingText(setting.get('app.lang'), 'title'),
+          click: () => sabaki.openTeachingReview(),
+        },
         {
           label: i18n.t('menu.tools', 'Toggle Auto&play Mode'),
           click: () =>

@@ -122,6 +122,107 @@ test('an already prepared engine starts analysis without another download', asyn
   ).toBe(1)
 })
 
+for (const stopped of [false, true])
+  test(`a saved KataGo ${stopped ? 'that is stopped' : 'that is not loaded'} is loaded without setup or downloads`, async ({
+    electronApp,
+    page,
+  }) => {
+    await prepare(electronApp, page)
+    const configured = {...engine, name: 'KataGo'}
+    await page.evaluate(
+      async ({configured, stopped}) => {
+        await window.sabaki.setting.set('engines.list', [configured])
+        if (stopped) {
+          const [syncer] = window.__sabaki.attachEngines([configured])
+          await syncer.queueCommand({name: 'list_commands', args: []})
+          await syncer.stop()
+        }
+      },
+      {configured, stopped},
+    )
+    await electronApp.evaluate(({ipcMain}) => {
+      global.__setupRequests = []
+      for (const method of ['status', 'install']) {
+        ipcMain.removeHandler('engineSetup:' + method)
+        ipcMain.handle('engineSetup:' + method, () => {
+          global.__setupRequests.push(method)
+          return {ok: false, error: 'Unexpected setup request'}
+        })
+      }
+    })
+    await page.locator('#bar .analyze-game').click()
+    await page.waitForFunction(
+      () => window.__sabaki.state.batchAnalysis?.completed === 3,
+    )
+    await expect(page.locator('#enginesetup')).not.toHaveClass(/show/)
+    expect(await electronApp.evaluate(() => global.__setupRequests)).toEqual([])
+    expect(
+      await page.evaluate(
+        () => window.__sabaki.state.attachedEngineSyncers.length,
+      ),
+    ).toBe(1)
+    expect(
+      await page.evaluate(() => window.sabaki.setting.get('engines.list')),
+    ).toEqual([configured])
+  })
+
+test('a failed saved engine connection retries the existing engine without downloading', async ({
+  electronApp,
+  page,
+}) => {
+  await prepare(electronApp, page)
+  await page.evaluate(async (engine) => {
+    await window.sabaki.setting.set('engines.list', [
+      {...engine, name: 'KataGo', path: '/nonexistent/katago'},
+    ])
+  }, engine)
+  await electronApp.evaluate(({ipcMain}) => {
+    global.__downloads = 0
+    ipcMain.removeHandler('engineSetup:install')
+    ipcMain.handle('engineSetup:install', () => {
+      global.__downloads++
+      return {ok: false}
+    })
+  })
+  await page.locator('#bar .analyze-game').click()
+  await expect(page.locator('#enginesetup [role=alert]')).toContainText(
+    'Unable to connect',
+  )
+  await expect(page.locator('#enginesetup')).not.toContainText('380 MB')
+  await page.locator('#enginesetup .primary').click()
+  await expect(page.locator('#enginesetup [role=alert]')).toContainText(
+    'Unable to connect',
+  )
+  expect(await electronApp.evaluate(() => global.__downloads)).toBe(0)
+})
+
+test('a discovered local engine is configured and analyzed on systems without bundled downloads', async ({
+  electronApp,
+  page,
+}) => {
+  await prepare(electronApp, page, {supported: false})
+  await electronApp.evaluate(({ipcMain}, engine) => {
+    ipcMain.removeHandler('engineSetup:status')
+    ipcMain.handle('engineSetup:status', () => ({
+      ok: true,
+      data: {
+        phase: 'local',
+        supported: false,
+        engine,
+        existing: true,
+        local: true,
+      },
+    }))
+    ipcMain.removeHandler('engineSetup:install')
+    ipcMain.handle('engineSetup:install', () => ({ok: true, data: engine}))
+  }, engine)
+  await page.locator('#bar .analyze-game').click()
+  await page.waitForFunction(
+    () => window.__sabaki.state.batchAnalysis?.completed === 3,
+  )
+  await expect(page.locator('#enginesetup')).not.toHaveClass(/show/)
+})
+
 test('canceling setup ignores a late completion and leaves the game untouched', async ({
   electronApp,
   page,
@@ -195,6 +296,7 @@ for (const [language, title, action] of [
       page,
     }, testInfo) => {
       await prepare(electronApp, page)
+      await expect(page.locator('#bar .analyze-game')).toHaveText('全局分析')
       await page.locator('#bar .analyze-game').click()
       await expect(page.locator('#enginesetup h2')).toHaveText(title)
       await expect(page.locator('#enginesetup .primary')).toHaveText(action)

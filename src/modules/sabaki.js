@@ -1,6 +1,6 @@
 import fs from 'fs'
 import EventEmitter from 'events'
-import {basename, extname} from 'path'
+import {basename, extname, isAbsolute} from 'path'
 import {ipcRenderer} from 'electron'
 import {h} from 'preact'
 import {v4 as uuid} from 'uuid'
@@ -20,6 +20,10 @@ import * as gobantransformer from './gobantransformer.js'
 import * as gtplogger from './gtplogger.js'
 import * as helper from './helper.js'
 import * as sound from './sound.js'
+import {
+  snapshot as teachingSnapshot,
+  fingerprint as teachingFingerprint,
+} from '../teaching/position.js'
 
 deadstones.useFetch('./node_modules/@sabaki/deadstones/wasm/deadstones_bg.wasm')
 
@@ -95,6 +99,10 @@ class Sabaki extends EventEmitter {
       showGameGraph: setting.get('view.show_graph'),
       showCommentBox: setting.get('view.show_comments'),
       sidebarWidth: setting.get('view.sidebar_width'),
+      showTeachingReview: false,
+      sidebarTab: 'record',
+      teachingReview: null,
+      teachingPosition: null,
       graphGridSize: null,
       graphNodeSize: null,
 
@@ -198,6 +206,20 @@ class Sabaki extends EventEmitter {
     })
 
     this.updateSettingState()
+    window.sabaki.teaching.onChange((review) => {
+      if (review.fingerprint !== this.teachingFingerprint) return
+      this.setState({
+        teachingReview: {...review, stale: !!this.state.teachingReview?.stale},
+      })
+    })
+    this.on('change', ({change}) => {
+      if (
+        change.gameTrees ||
+        change.gameIndex != null ||
+        change.treePosition != null
+      )
+        this.checkTeachingReview()
+    })
   }
 
   async _initAppInfo() {
@@ -264,7 +286,11 @@ class Sabaki extends EventEmitter {
         return state.gameTrees[state.gameIndex]
       },
       get showSidebar() {
-        return state.showGameGraph || state.showCommentBox
+        return (
+          state.showGameGraph ||
+          state.showCommentBox ||
+          state.showTeachingReview
+        )
       },
       get gameInfo() {
         return self.getGameInfo()
@@ -349,12 +375,112 @@ class Sabaki extends EventEmitter {
 
   // User Interface
 
+  openTeachingReview() {
+    if (this.state.mode === 'edit') this.setMode('play')
+    this.setState({showTeachingReview: true, sidebarTab: 'teaching'})
+  }
+
+  async closeTeachingReview() {
+    await this.stopTeachingReview()
+    this.setState({showTeachingReview: false, sidebarTab: 'record'})
+  }
+
+  checkTeachingReview() {
+    if (!this.state.teachingPosition || this.state.teachingReview?.stale) return
+    let current
+    try {
+      current = teachingSnapshot(
+        this.inferredState.gameTree,
+        this.state.gameCurrents[this.state.gameIndex],
+        this.teachingRulesOverride,
+      )
+    } catch {}
+    if (!current || teachingFingerprint(current) !== this.teachingFingerprint) {
+      this.setState({
+        teachingReview: {...this.state.teachingReview, stale: true},
+      })
+      this.stopTeachingReview()
+    }
+  }
+
+  async startTeachingReview({
+    engineIndex,
+    rules = '',
+    budget = 'standard',
+    useLLM = false,
+  } = {}) {
+    if (this.teachingStarting || this.state.teachingReview?.running) return
+    if (this.state.engineGameOngoing != null) throw new Error('engine-game')
+    if (this.generatingMoveCount > 0) throw new Error('engine-busy')
+    this.teachingStarting = true
+    this.teachingStartCanceled = false
+    this.teachingStartDone = new Promise((resolve) => {
+      this.finishTeachingStart = resolve
+    })
+    try {
+      await this.stopBatchAnalysis()
+      const syncer = this.inferredState.analyzingEngineSyncer
+      this.stopAnalysis()
+      if (syncer) await engineOperation(syncer, syncer.sendAbort())
+      if (this.teachingStartCanceled) return
+      if (this.state.attachedEngineSyncers.some((s) => s.busy))
+        throw new Error('engine-busy')
+      const position = teachingSnapshot(
+        this.inferredState.gameTree,
+        this.state.gameCurrents[this.state.gameIndex],
+        rules,
+      )
+      this.teachingRulesOverride = rules
+      this.teachingFingerprint = teachingFingerprint(position)
+      this.setState({
+        teachingPosition: position,
+        teachingReview: {
+          phase: 'preparing',
+          running: true,
+          cards: [],
+          stale: false,
+        },
+      })
+      const response = await window.sabaki.teaching.start({
+        position,
+        engineIndex,
+        budget,
+        useLLM,
+        language: setting.get('app.lang'),
+      })
+      if (!response.ok) {
+        this.setState({
+          teachingReview: {
+            phase: 'failed',
+            running: false,
+            cards: [],
+            error: response.error,
+          },
+        })
+        throw new Error(response.error)
+      }
+      if (this.teachingStartCanceled) await window.sabaki.teaching.cancel()
+      this.checkTeachingReview()
+    } finally {
+      this.teachingStarting = false
+      this.finishTeachingStart()
+    }
+  }
+
+  async stopTeachingReview() {
+    if (this.teachingStarting) this.teachingStartCanceled = true
+    if (this.state.teachingReview?.running)
+      await window.sabaki.teaching.cancel()
+    if (this.teachingStarting) await this.teachingStartDone
+  }
+
   setMode(mode) {
     if (this.state.mode === mode) return
 
     this.setState({estimateOverrides: {}})
 
     let stateChange = {mode}
+    if (mode === 'edit') stateChange.sidebarTab = 'record'
 
     if (['scoring', 'estimator'].includes(mode)) {
       // Guess dead stones
@@ -1832,8 +1958,28 @@ class Sabaki extends EventEmitter {
     return window.sabaki.engineSetup.cancel()
   }
 
+  getExistingAnalysisEngine() {
+    const commands = setting.get('engines.analyze_commands')
+    const attached = this.state.attachedEngineSyncers.find((syncer) =>
+      commands.some((command) => syncer.commands.includes(command)),
+    )
+    if (attached) return attached.engine
+    // Saved engines need not be running to be usable. Prefer KataGo, then
+    // other recognizable analysis engines, preserving all user arguments.
+    const engines = setting.get('engines.list')
+    return (
+      engines.find((engine) =>
+        /katago/i.test(`${engine.name} ${engine.path}`),
+      ) ||
+      engines.find((engine) =>
+        /leela|lizzie/i.test(`${engine.name} ${engine.path}`),
+      )
+    )
+  }
+
   async analyzeGame() {
     if (this.batchAnalysisJob) return this.stopBatchAnalysis()
+    if (this.teachingStarting || this.state.teachingReview?.running) return
     if (this.state.engineGameOngoing != null) {
       await dialog.showMessageBox(
         i18n.t('EngineSetup', 'Stop the engine game before analyzing.'),
@@ -1858,11 +2004,18 @@ class Sabaki extends EventEmitter {
     const intent = this.automaticAnalysisIntent
     const request = this.engineSetupRequest
     let syncer
+    let attachedHere = false
     try {
+      if (isAbsolute(engine.path)) fs.accessSync(engine.path, fs.constants.X_OK)
       syncer = this.state.attachedEngineSyncers.find(
-        (entry) => entry.engine.path === engine.path && !entry.suspended,
+        (entry) =>
+          entry.engine.path === engine.path &&
+          entry.engine.args === engine.args,
       )
-      if (!syncer) [syncer] = this.attachEngines([engine])
+      if (!syncer) {
+        ;[syncer] = this.attachEngines([engine])
+        attachedHere = true
+      } else if (syncer.suspended) syncer.start()
       const response = await engineOperation(
         syncer,
         syncer.queueCommand({name: 'list_commands', args: []}),
@@ -1870,21 +2023,26 @@ class Sabaki extends EventEmitter {
       )
       if (
         response.error ||
-        !response.content.split('\n').includes('kata-analyze')
+        !setting
+          .get('engines.analyze_commands')
+          .some((command) => response.content.split('\n').includes(command))
       )
         throw new Error('Unable to connect the engine. Please retry.')
+      syncer.commands = response.content.split('\n')
       if (
         this.state.openDrawer !== 'enginesetup' ||
         request !== this.engineSetupRequest
-      )
+      ) {
+        if (attachedHere) await this.detachEngines([syncer.id])
         return
+      }
       const tree = this.inferredState.gameTree
       const ids = [
         ...tree.listCurrentNodes(this.state.gameCurrents[this.state.gameIndex]),
       ].map((node) => node.id)
       if (intent && (tree !== intent.tree || !helper.equals(ids, intent.ids)))
         throw new Error(
-          'The game changed during setup. Click Analyze this game again to analyze the current game.',
+          'The game changed during setup. Click Analyze game again to analyze the current game.',
         )
       this.automaticAnalysisIntent = null
       this.closeDrawer()
@@ -2139,6 +2297,16 @@ class Sabaki extends EventEmitter {
   }
 
   async generateMove(syncerId, treePosition, {commit = () => true} = {}) {
+    this.generatingMoveCount = (this.generatingMoveCount || 0) + 1
+    try {
+      return await this.generateEngineMove(syncerId, treePosition, {commit})
+    } finally {
+      this.generatingMoveCount--
+    }
+  }
+
+  async generateEngineMove(syncerId, treePosition, {commit = () => true} = {}) {
+    await this.stopTeachingReview()
     await this.stopBatchAnalysis()
     let t = i18n.context('sabaki.engine')
     let sign = this.getPlayer(treePosition)
@@ -2259,6 +2427,7 @@ class Sabaki extends EventEmitter {
   }
 
   async startEngineGame(treePosition) {
+    await this.stopTeachingReview()
     await this.stopBatchAnalysis()
     let t = i18n.context('sabaki.engine')
     let {engineGameOngoing, attachedEngineSyncers} = this.state
@@ -2343,7 +2512,12 @@ class Sabaki extends EventEmitter {
   }
 
   async analyzeMove(treePosition) {
-    if (this.batchAnalysisJob) return
+    if (
+      this.batchAnalysisJob ||
+      this.state.teachingReview?.running ||
+      this.teachingStarting
+    )
+      return
     let sign = this.getPlayer(treePosition)
     let color = sign > 0 ? 'B' : 'W'
     let syncer = this.inferredState.analyzingEngineSyncer
@@ -2373,6 +2547,7 @@ class Sabaki extends EventEmitter {
   }
 
   async startAnalysis(syncerId) {
+    await this.stopTeachingReview()
     await this.stopBatchAnalysis()
     if (this.state.analyzingEngineSyncerId === syncerId) return
 
@@ -2424,6 +2599,7 @@ class Sabaki extends EventEmitter {
   }
 
   async startBatchAnalysis() {
+    if (this.teachingStarting || this.state.teachingReview?.running) return
     if (this.batchAnalysisJob) return
     const t = i18n.context('BatchAnalysis')
     if (this.state.engineGameOngoing != null) {

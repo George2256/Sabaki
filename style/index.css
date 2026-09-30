@@ -1,4 +1,5 @@
 @import url('../node_modules/@sabaki/shudan/css/goban.css');
+@import url('./teaching.css');
 
 #mainlayout {
   position: absolute;

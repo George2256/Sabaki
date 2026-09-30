@@ -193,6 +193,7 @@ class App extends Component {
 
       setTimeout(async () => {
         if (await sabaki.askForSave()) {
+          await sabaki.stopTeachingReview()
           sabaki.detachEngines(
             this.state.attachedEngineSyncers.map((syncer) => syncer.id),
           )
@@ -380,7 +381,11 @@ class App extends Component {
         id: 'mainlayout',
 
         beginSideSize: state.showLeftSidebar ? state.leftSidebarWidth : 0,
-        endSideSize: state.showSidebar ? state.sidebarWidth : 0,
+        endSideSize: state.showSidebar
+          ? state.showTeachingReview && state.sidebarTab === 'teaching'
+            ? Math.max(360, state.sidebarWidth)
+            : state.sidebarWidth
+          : 0,
 
         beginSideContent: h(LeftSidebar, state),
         mainContent: h(MainView, state),

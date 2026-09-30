@@ -5,6 +5,12 @@ configured analysis command. Choose **Engines → Quick Draw Winrate Graph** (F6
 In Chinese, the command is **引擎 → 快速绘制胜率图**. The same button is
 available above an existing analysis graph.
 
+While a teaching review is running, Quick Draw is disabled. The menu and F6 also
+leave the review running. Stop the review explicitly before drawing; its
+completed teaching analysis remains cached in the current window for continuing
+the same branch with matching engine, model and search settings. Graph values
+are not used as teaching evidence.
+
 The task analyzes the currently selected branch from its root to its end,
 including the initial position. It leaves the displayed board position unchanged
 and updates the graph as results arrive. The graph header shows completed/total

@@ -197,6 +197,7 @@ let defaults = {
   'view.show_menubar': true,
   'view.show_leftsidebar': false,
   'view.show_comments': false,
+  'teaching.budget': 'standard',
   'view.show_coordinates': false,
   'view.show_graph': false,
   'view.show_move_colorization': true,

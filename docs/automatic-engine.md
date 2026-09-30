@@ -1,13 +1,21 @@
 # Automatic engine setup
 
 On an **Apple silicon Mac running macOS 15 or later**, open a game and click
-**Analyze this game** beside the player names below the board. The same command
-is available under **Engines**. If no analysis engine is connected, Sabaki opens
-the automatic setup panel. Click **Prepare and analyze** to download and check
-KataGo, then analyze the currently selected branch. Subsequent analyses reuse
-the installation. An already attached analysis engine is used immediately.
+**Analyze game** beside the player names below the board. The same command is
+available under **Engines**. Sabaki first uses a connected analysis engine, then
+loads an existing saved KataGo or Leela configuration, including a stopped
+engine. It preserves your model and startup arguments. If no saved engine is
+found, it checks its own installation and local KataGo installations on PATH or
+in the standard Homebrew locations. When a local model is available beside the
+executable or under its `share/katago`, `models`, or `~/.katago` directory,
+Sabaki creates its own GTP configuration, checks analysis, and saves the engine.
 
-In Simplified Chinese these controls are **分析这盘棋** and **准备并分析**.
+Only when no local engine and model are found does the setup panel offer
+**Prepare and analyze** to download KataGo. Connection failures retry the
+existing engine and show instructions for checking its configuration; they do
+not trigger another download. Analysis covers the currently selected branch.
+
+In Simplified Chinese these controls are **全局分析** and **准备并分析**.
 English, Simplified Chinese and Traditional Chinese are supported.
 
 The initial download is about 380 MB. Reserve approximately 1.5 GB of disk space

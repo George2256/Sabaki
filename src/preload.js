@@ -41,6 +41,17 @@ ipcRenderer.on('setting:change', (_, data) => {
 })
 
 window.sabaki = {
+  teaching: {
+    status: () => ipcRenderer.invoke('teaching:status'),
+    configure: (input) => ipcRenderer.invoke('teaching:configure', input),
+    start: (input) => ipcRenderer.invoke('teaching:start', input),
+    cancel: () => ipcRenderer.invoke('teaching:cancel'),
+    onChange: (callback) => {
+      const listener = (_, state) => callback(state)
+      ipcRenderer.on('teaching:change', listener)
+      return () => ipcRenderer.removeListener('teaching:change', listener)
+    },
+  },
   engineSetup: {
     status: () => ipcRenderer.invoke('engineSetup:status'),
     install: () => ipcRenderer.invoke('engineSetup:install'),

@@ -90,11 +90,20 @@ export default class WinrateGraph extends Component {
   }
 
   shouldComponentUpdate(
-    {lastPlayer, width, currentIndex, data, analysisType, batchAnalysis},
+    {
+      lastPlayer,
+      width,
+      currentIndex,
+      data,
+      analysisType,
+      batchAnalysis,
+      teachingRunning,
+    },
     {invert},
   ) {
     return (
       batchAnalysis !== this.props.batchAnalysis ||
+      teachingRunning !== this.props.teachingRunning ||
       data.length !== this.props.data.length ||
       data.some((value, index) => value !== this.props.data[index]) ||
       lastPlayer !== this.props.lastPlayer ||
@@ -130,8 +139,15 @@ export default class WinrateGraph extends Component {
   }
 
   render() {
-    let {lastPlayer, width, currentIndex, data, analysisType, batchAnalysis} =
-      this.props
+    let {
+      lastPlayer,
+      width,
+      currentIndex,
+      data,
+      analysisType,
+      batchAnalysis,
+      teachingRunning,
+    } = this.props
     let {invert} = this.state
     let blunderThreshold =
       analysisType === 'winrate'
@@ -213,9 +229,11 @@ export default class WinrateGraph extends Component {
           'button',
           {
             type: 'button',
-            disabled: !!batchAnalysis?.stopping,
+            disabled: !!batchAnalysis?.stopping || teachingRunning,
             title: batchT(
-              'Analyze every position in the current branch. Existing results are kept.',
+              teachingRunning
+                ? 'Stop the teaching review before drawing the graph.'
+                : 'Analyze every position in the current branch. Existing results are kept.',
             ),
             onClick: () =>
               sabaki.batchAnalysisJob

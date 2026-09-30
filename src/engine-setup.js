@@ -1,15 +1,26 @@
 const EventEmitter = require('events')
 const fs = require('fs/promises')
-const {createReadStream} = require('fs')
+const {createReadStream, constants} = require('fs')
 const {createHash} = require('crypto')
 const {spawn, execFile} = require('child_process')
 const {promisify} = require('util')
-const {join, dirname, basename, sep} = require('path')
+const {join, dirname, basename, sep, delimiter} = require('path')
 const os = require('os')
 const argvsplit = require('argv-split')
 const {manifest, sources} = require('./engine-setup-manifest')
 
 const exec = promisify(execFile)
+const localExecutables = () => [
+  '/opt/homebrew/bin/katago',
+  '/usr/local/bin/katago',
+  ...(process.env.PATH || '')
+    .split(delimiter)
+    .filter(Boolean)
+    .map((directory) =>
+      join(directory, process.platform === 'win32' ? 'katago.exe' : 'katago'),
+    ),
+]
+const quoteArgs = (args) => args.map((arg) => JSON.stringify(arg)).join(' ')
 const abortError = () =>
   Object.assign(new Error('Canceled'), {name: 'AbortError'})
 const checkAbort = (signal) => {
@@ -103,10 +114,10 @@ function supported({
   )
 }
 
-function makeConfig(threads) {
+function makeConfig(threads, logDirectory = 'logs') {
   return [
     'rules = tromp-taylor',
-    'logDir = logs',
+    `logDir = ${logDirectory}`,
     'logAllGTPCommunication = false',
     'logSearchInfo = false',
     'logToStderr = true',
@@ -247,6 +258,7 @@ class EngineSetup extends EventEmitter {
     validate = validateEngine,
     packages = manifest.packages,
     mirrors = sources,
+    localPaths = localExecutables(),
   } = {}) {
     super()
     this.directory = directory
@@ -256,6 +268,7 @@ class EngineSetup extends EventEmitter {
     this.validate = validate
     this.packages = packages
     this.mirrors = mirrors
+    this.localPaths = localPaths
     this.compatible = supported(platform)
     this.state = {phase: 'idle', supported: this.compatible, engine: null}
     this.job = null
@@ -266,14 +279,14 @@ class EngineSetup extends EventEmitter {
     this.emit('change', this.state)
   }
 
-  async status() {
-    if (this.job || this.state.phase !== 'idle') return this.state
+  async status({refresh = false} = {}) {
+    if (!refresh && (this.job || this.state.phase !== 'idle')) return this.state
     try {
       const runtime = join(this.directory, manifest.id)
       const installed = JSON.parse(
         await fs.readFile(join(runtime, 'installed.json'), 'utf8'),
       )
-      if (installed.id !== manifest.id) return this.state
+      if (installed.id !== manifest.id) throw new Error('Invalid installation')
       const engine = this.engine(runtime)
       for (const filename of [
         engine.path,
@@ -282,11 +295,74 @@ class EngineSetup extends EventEmitter {
         join(runtime, 'gtp.cfg'),
       ])
         await fs.access(filename)
-      this.update({phase: 'ready', engine})
+      this.update({phase: 'ready', engine, local: false, existing: true})
+      return this.state
     } catch (error) {
       if (error.code !== 'ENOENT') this.emit('diagnostic', error)
     }
+    const engine = await this.findLocalEngine()
+    if (engine)
+      this.update({phase: 'local', engine, existing: true, local: true})
     return this.state
+  }
+
+  async findLocalEngine() {
+    for (const executable of [...new Set(this.localPaths)]) {
+      try {
+        await fs.access(executable, constants.X_OK)
+        const realExecutable = await fs.realpath(executable)
+        const root = dirname(dirname(realExecutable))
+        const directories = [
+          ...new Set([
+            join(root, 'share/katago'),
+            dirname(realExecutable),
+            join(dirname(realExecutable), 'models'),
+            join(os.homedir(), '.katago'),
+          ]),
+        ]
+        let model
+        for (const directory of directories) {
+          const entries = await fs.readdir(directory).catch(() => [])
+          const name = entries.includes(manifest.model)
+            ? manifest.model
+            : entries
+                .sort()
+                .find(
+                  (name) =>
+                    /\.(bin|txt)(\.gz)?$/i.test(name) && !/human/i.test(name),
+                )
+          if (name && (await fs.stat(join(directory, name))).isFile()) {
+            model = join(directory, name)
+            break
+          }
+        }
+        if (!model) continue
+        // Keep the local installation intact; only create our own GTP config.
+        const config = join(this.directory, 'local-gtp.cfg')
+        await fs.mkdir(this.directory, {recursive: true})
+        try {
+          await fs.writeFile(
+            config,
+            makeConfig(
+              Math.max(1, Math.min(4, Math.floor(os.cpus().length / 2))),
+              join(this.directory, 'logs'),
+            ),
+            {flag: 'wx'},
+          )
+        } catch (error) {
+          if (error.code !== 'EEXIST') throw error
+        }
+        return {
+          name: 'KataGo (Local)',
+          path: executable,
+          args: quoteArgs(['gtp', '-model', model, '-config', config]),
+        }
+      } catch (error) {
+        if (error.code !== 'ENOENT' && error.code !== 'EACCES')
+          this.emit('diagnostic', error)
+      }
+    }
+    return null
   }
 
   engine(runtime) {
@@ -309,22 +385,15 @@ class EngineSetup extends EventEmitter {
 
   install() {
     if (this.job) return this.job.promise
-    if (!this.compatible)
-      return Promise.reject(
-        new Error(
-          'Automatic setup supports Apple silicon Macs with macOS 15 or later.',
-        ),
-      )
     const job = {controller: new AbortController()}
     this.job = job
     this.update({
       phase: 'preparing',
       error: null,
-      engine: null,
       received: 0,
       total: null,
     })
-    job.promise = this.run(job.controller.signal)
+    job.promise = this.prepare(job.controller.signal)
       .catch((error) => {
         this.emit('diagnostic', error)
         this.update({
@@ -348,6 +417,27 @@ class EngineSetup extends EventEmitter {
   cancel() {
     this.job?.controller.abort()
     return this.job?.promise.catch(() => {}) || Promise.resolve()
+  }
+
+  async prepare(signal) {
+    // Check again at installation time, including after a failed connection or
+    // an explicit setup request. A usable local runtime never triggers fetch.
+    await this.status({refresh: true})
+    checkAbort(signal)
+    if (this.state.engine) {
+      const engine = this.state.engine
+      this.update({phase: 'checking'})
+      await this.validate(engine, {signal})
+      checkAbort(signal)
+      await this.register(engine)
+      this.update({phase: 'ready', local: false, existing: true})
+      return engine
+    }
+    if (!this.compatible)
+      throw new Error(
+        'Automatic setup supports Apple silicon Macs with macOS 15 or later.',
+      )
+    return this.run(signal)
   }
 
   async run(signal) {

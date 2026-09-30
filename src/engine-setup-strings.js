@@ -1,6 +1,12 @@
 const simplified = {
   'Stop analysis': '停止分析',
-  'Analyze this game': '分析这盘棋',
+  'Analyze game': '全局分析',
+  'An existing engine was found. Sabaki will load it for analysis.':
+    '已找到本地引擎，将自动加载并用于分析。',
+  'Sabaki checks for an existing engine first. KataGo and its model are downloaded only when needed.':
+    '优先检查并配置已有的本地引擎，仅在需要时下载 KataGo 和模型。',
+  'Check the existing engine path, model and arguments in Preferences → Engines.':
+    '请在“偏好设置 → 引擎”中检查已有引擎的路径、模型和启动参数。',
   'Automatic engine setup…': '自动配置引擎…',
   'Automatic engine setup': '自动配置引擎',
   'Prepare analysis': '准备分析',
@@ -28,8 +34,8 @@ const simplified = {
     '磁盘空间不足。请腾出一些空间后重试。',
   'The engine could not start. Please retry.': '引擎未能正常启动，请重试。',
   'Unable to connect the engine. Please retry.': '未能连接引擎，请重试。',
-  'The game changed during setup. Click Analyze this game again to analyze the current game.':
-    '准备期间棋谱已发生变化。请再次点击“分析这盘棋”来分析当前棋谱。',
+  'The game changed during setup. Click Analyze game again to analyze the current game.':
+    '准备期间棋谱已发生变化。请再次点击“全局分析”来分析当前棋谱。',
   'Stop the engine game before analyzing.': '请先停止引擎对弈，再分析棋谱。',
   'Tsinghua mirror': '清华镜像',
   'USTC mirror': '中科大镜像',
@@ -47,7 +53,13 @@ exports['zh-Hans'] = simplified
 exports['zh-Hant'] = {
   ...simplified,
   'Stop analysis': '停止分析',
-  'Analyze this game': '分析這盤棋',
+  'Analyze game': '全局分析',
+  'An existing engine was found. Sabaki will load it for analysis.':
+    '已找到本機引擎，將自動載入並用於分析。',
+  'Sabaki checks for an existing engine first. KataGo and its model are downloaded only when needed.':
+    '優先檢查並設定已有的本機引擎，僅在需要時下載 KataGo 和模型。',
+  'Check the existing engine path, model and arguments in Preferences → Engines.':
+    '請在「偏好設定 → 引擎」中檢查已有引擎的路徑、模型和啟動參數。',
   'Automatic engine setup…': '自動設定引擎…',
   'Automatic engine setup': '自動設定引擎',
   'Prepare analysis': '準備分析',
@@ -75,8 +87,8 @@ exports['zh-Hant'] = {
     '磁碟空間不足。請騰出一些空間後重試。',
   'The engine could not start. Please retry.': '引擎未能正常啟動，請重試。',
   'Unable to connect the engine. Please retry.': '未能連接引擎，請重試。',
-  'The game changed during setup. Click Analyze this game again to analyze the current game.':
-    '準備期間棋譜已發生變化。請再次點擊「分析這盤棋」來分析目前棋譜。',
+  'The game changed during setup. Click Analyze game again to analyze the current game.':
+    '準備期間棋譜已發生變化。請再次點擊「全局分析」來分析目前棋譜。',
   'Stop the engine game before analyzing.': '請先停止引擎對弈，再分析棋譜。',
   'Tsinghua mirror': '清華鏡像',
   'Homebrew official': 'Homebrew 官方來源',

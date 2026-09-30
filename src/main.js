@@ -198,6 +198,42 @@ function setupWindowEventForwarding(win) {
 }
 
 function setupIpcHandlers() {
+  // A review and its transient LLM credentials belong to one window.
+  const teachingServices = new Map()
+  const teachingService = (sender) => {
+    if (!teachingServices.has(sender.id)) {
+      const service = require('./teaching/service').createService({
+        directory: join(
+          setting.userDataDirectory,
+          'teaching',
+          String(sender.id),
+        ),
+        getEngines: () => setting.get('engines.list'),
+        fetch: (url, options) => net.fetch(url, options),
+      })
+      service.on('change', (state) => {
+        if (!sender.isDestroyed()) sender.send('teaching:change', state)
+      })
+      teachingServices.set(sender.id, service)
+      sender.once('destroyed', () => {
+        service.cancel()
+        teachingServices.delete(sender.id)
+      })
+    }
+    return teachingServices.get(sender.id)
+  }
+  for (const method of ['status', 'configure', 'start', 'cancel']) {
+    ipcMain.handle(`teaching:${method}`, async ({sender}, input) => {
+      try {
+        return {ok: true, data: await teachingService(sender)[method](input)}
+      } catch (error) {
+        return {ok: false, error: error.message}
+      }
+    })
+  }
+  app.on('before-quit', () => {
+    for (const service of teachingServices.values()) service.cancel()
+  })
   const setSettingAndNotify = (key, value) => {
     setting.set(key, value)
     for (const window of BrowserWindow.getAllWindows()) {

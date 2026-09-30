@@ -7,6 +7,9 @@ import {
   mkdir,
   access,
   readdir,
+  chmod,
+  symlink,
+  realpath,
 } from 'fs/promises'
 import {tmpdir} from 'os'
 import {join} from 'path'
@@ -112,6 +115,7 @@ describe('automatic engine setup', function () {
       directory,
       fetch,
       platform,
+      localPaths: [],
       packages: [pkg],
       mirrors: () => [mirror(baseUrl + '/good')],
       extract: async (p, archive, staging) => {
@@ -236,6 +240,93 @@ describe('automatic engine setup', function () {
       /Apple silicon/,
     )
     assert.strictEqual(requests.length, 0)
+  })
+
+  async function localInstallation() {
+    const root = join(directory, '本地 KataGo')
+    const executable = join(root, 'bin', 'katago')
+    const model = join(root, 'share/katago', manifest.model)
+    await mkdir(join(root, 'bin'), {recursive: true})
+    await mkdir(join(root, 'share/katago'), {recursive: true})
+    await writeFile(executable, 'local binary')
+    await chmod(executable, 0o755)
+    await writeFile(model, 'local model')
+    return {executable, model}
+  }
+
+  it('configures a local installation without downloads, even on an unsupported bundled platform', async () => {
+    const {executable, model} = await localInstallation()
+    let registered,
+      validations = 0
+    const setup = service({
+      localPaths: [executable],
+      platform: {...platform, arch: 'x64'},
+      validate: async (engine) => {
+        validations++
+        assert.strictEqual(engine.path, executable)
+        assert.deepStrictEqual(argvsplit(engine.args), [
+          'gtp',
+          '-model',
+          await realpath(model),
+          '-config',
+          join(directory, 'local-gtp.cfg'),
+        ])
+        assert.strictEqual(registered, undefined)
+      },
+      register: (engine) => {
+        registered = engine
+      },
+    })
+    const status = await setup.status()
+    assert.strictEqual(status.phase, 'local')
+    assert.strictEqual(status.supported, false)
+    assert.strictEqual(registered, undefined)
+    const engine = await setup.install()
+    assert.deepStrictEqual(registered, engine)
+    assert.strictEqual(validations, 1)
+    assert.strictEqual(setup.state.phase, 'ready')
+    assert.strictEqual(requests.length, 0)
+    assert.strictEqual(await readFile(executable, 'utf8'), 'local binary')
+  })
+
+  it('discovers local symlink installations when install is called directly and preserves its config', async () => {
+    const {executable} = await localInstallation()
+    const alias = join(directory, 'katago')
+    await symlink(executable, alias)
+    await writeFile(join(directory, 'local-gtp.cfg'), 'maxVisits = 1234\n')
+    const setup = service({localPaths: [alias]})
+    const engine = await setup.install()
+    assert.strictEqual(engine.path, alias)
+    assert.strictEqual(requests.length, 0)
+    assert.strictEqual(
+      await readFile(join(directory, 'local-gtp.cfg'), 'utf8'),
+      'maxVisits = 1234\n',
+    )
+  })
+
+  it('keeps failed local validation retrying the local engine without downloads or registration', async () => {
+    const {executable} = await localInstallation()
+    let registrations = 0
+    const setup = service({
+      localPaths: [executable],
+      validate: async () => {
+        throw new Error('bad local model')
+      },
+      register: () => {
+        registrations++
+      },
+    })
+    await assert.rejects(setup.install(), /bad local model/)
+    await assert.rejects(setup.install(), /bad local model/)
+    assert.strictEqual(requests.length, 0)
+    assert.strictEqual(registrations, 0)
+  })
+
+  it('reuses an installed automatic runtime even for a direct install request', async () => {
+    await service().install()
+    assert.strictEqual(requests.length, 1)
+    await service().install()
+    assert.strictEqual(requests.length, 1)
   })
 
   it('round-trips engine arguments with Chinese, spaces, quotes and backslashes', () => {

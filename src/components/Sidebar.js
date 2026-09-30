@@ -6,6 +6,8 @@ import WinrateGraph from './sidebars/WinrateGraph.js'
 import Slider from './sidebars/Slider.js'
 import GameGraph from './sidebars/GameGraph.js'
 import CommentBox from './sidebars/CommentBox.js'
+import TeachingReview from './sidebars/TeachingReview.js'
+import {t as teachingText} from '../teaching/strings.js'
 
 const setting = {
   get: (key) => window.sabaki.setting.get(key),
@@ -91,12 +93,20 @@ export default class Sidebar extends Component {
     )
   }
 
-  componentDidUpdate(_, {winrateGraphHeight, showWinrateGraph}) {
+  componentDidUpdate(previous, {winrateGraphHeight, showWinrateGraph}) {
     if (
       winrateGraphHeight !== this.state.winrateGraphHeight ||
       showWinrateGraph !== this.state.showWinrateGraph
     ) {
-      this.gameGraph.remeasure()
+      this.gameGraph?.remeasure()
+    }
+    if (
+      this.props.sidebarTab === 'record' &&
+      (previous.sidebarTab !== this.props.sidebarTab ||
+        previous.showTeachingReview !== this.props.showTeachingReview)
+    ) {
+      this.gameGraph?.remeasure()
+      this.gameGraph?.updateCameraPosition()
     }
   }
 
@@ -114,6 +124,11 @@ export default class Sidebar extends Component {
       showWinrateGraph,
       showGameGraph,
       showCommentBox,
+      showTeachingReview,
+      sidebarTab,
+      teachingReview,
+      teachingPosition,
+      engineGameOngoing,
 
       graphGridSize,
       graphNodeSize,
@@ -151,6 +166,7 @@ export default class Sidebar extends Component {
 
         sideContent: h(WinrateGraph, {
           batchAnalysis,
+          teachingRunning: !!teachingReview?.running,
           lastPlayer,
           width: winrateGraphWidth,
           data: analysisType === 'winrate' ? winrateData : scoreLeadData,
@@ -159,84 +175,132 @@ export default class Sidebar extends Component {
           onCurrentIndexChange: this.handleWinrateGraphChange,
         }),
 
-        mainContent: h(SplitContainer, {
-          vertical: true,
-          sideSize: !showGameGraph ? 100 : !showCommentBox ? 0 : sidebarSplit,
-          procentualSplit: true,
-
-          mainContent: h(
+        mainContent: h(
+          'div',
+          {class: 'sidebar-pages'},
+          showTeachingReview &&
+            h(
+              'nav',
+              {
+                class: 'sidebar-tabs',
+                'aria-label': teachingText(setting.get('app.lang'), 'title'),
+              },
+              h(
+                'button',
+                {
+                  type: 'button',
+                  class: sidebarTab === 'record' ? 'current' : '',
+                  onClick: () => sabaki.setState({sidebarTab: 'record'}),
+                },
+                teachingText(setting.get('app.lang'), 'record'),
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  class: sidebarTab === 'teaching' ? 'current' : '',
+                  onClick: () => sabaki.openTeachingReview(),
+                },
+                teachingText(setting.get('app.lang'), 'title'),
+              ),
+            ),
+          h(
             'div',
             {
-              ref: (el) => (this.horizontalSplitContainer = el),
-              class: 'graphproperties',
+              class: 'record-page',
+              hidden: showTeachingReview && sidebarTab === 'teaching',
+              style: {top: showTeachingReview ? 36 : 0},
             },
-
-            h(Slider, {
-              showSlider: showGameGraph,
-              text: level,
-              percent:
-                gameTree.getHeight() <= 1
-                  ? 0
-                  : (level / (gameTree.getHeight() - 1)) * 100,
-
-              onChange: this.handleSliderChange,
-              onStartAutoscrolling: this.handleStartAutoscrolling,
-              onStopAutoscrolling: this.handleStopAutoscrolling,
-            }),
-
-            h(GameGraph, {
-              ref: (component) => (this.gameGraph = component),
-
-              gameTree,
-              gameCurrents: gameCurrents[gameIndex],
-              treePosition,
-              showGameGraph,
-              height: !showGameGraph
-                ? 0
+            h(SplitContainer, {
+              vertical: true,
+              sideSize: !showGameGraph
+                ? 100
                 : !showCommentBox
-                  ? 100
-                  : 100 - sidebarSplit,
-              gridSize: graphGridSize,
-              nodeSize: graphNodeSize,
+                  ? 0
+                  : sidebarSplit,
+              procentualSplit: true,
 
-              onNodeClick: this.handleGraphNodeClick,
+              mainContent: h(
+                'div',
+                {
+                  ref: (el) => (this.horizontalSplitContainer = el),
+                  class: 'graphproperties',
+                },
+
+                h(Slider, {
+                  showSlider: showGameGraph,
+                  text: level,
+                  percent:
+                    gameTree.getHeight() <= 1
+                      ? 0
+                      : (level / (gameTree.getHeight() - 1)) * 100,
+
+                  onChange: this.handleSliderChange,
+                  onStartAutoscrolling: this.handleStartAutoscrolling,
+                  onStopAutoscrolling: this.handleStopAutoscrolling,
+                }),
+
+                h(GameGraph, {
+                  ref: (component) => (this.gameGraph = component),
+
+                  gameTree,
+                  gameCurrents: gameCurrents[gameIndex],
+                  treePosition,
+                  showGameGraph,
+                  height: !showGameGraph
+                    ? 0
+                    : !showCommentBox
+                      ? 100
+                      : 100 - sidebarSplit,
+                  gridSize: graphGridSize,
+                  nodeSize: graphNodeSize,
+
+                  onNodeClick: this.handleGraphNodeClick,
+                }),
+              ),
+
+              sideContent: h(CommentBox, {
+                mode,
+                gameTree,
+                treePosition,
+                showCommentBox,
+                moveAnnotation:
+                  node.data.BM != null
+                    ? [-1, node.data.BM[0]]
+                    : node.data.DO != null
+                      ? [0, 1]
+                      : node.data.IT != null
+                        ? [1, 1]
+                        : node.data.TE != null
+                          ? [2, node.data.TE[0]]
+                          : [null, 1],
+                positionAnnotation:
+                  node.data.UC != null
+                    ? [-2, node.data.UC[0]]
+                    : node.data.GW != null
+                      ? [-1, node.data.GW[0]]
+                      : node.data.DM != null
+                        ? [0, node.data.DM[0]]
+                        : node.data.GB != null
+                          ? [1, node.data.GB[0]]
+                          : [null, 1],
+                title: node.data.N != null ? node.data.N[0] : '',
+                comment: node.data.C != null ? node.data.C[0] : '',
+
+                onCommentInput: this.handleCommentInput,
+              }),
+
+              onChange: this.handleSidebarSplitChange,
+              onFinish: this.handleSidebarSplitFinish,
             }),
           ),
-
-          sideContent: h(CommentBox, {
-            mode,
-            gameTree,
-            treePosition,
-            showCommentBox,
-            moveAnnotation:
-              node.data.BM != null
-                ? [-1, node.data.BM[0]]
-                : node.data.DO != null
-                  ? [0, 1]
-                  : node.data.IT != null
-                    ? [1, 1]
-                    : node.data.TE != null
-                      ? [2, node.data.TE[0]]
-                      : [null, 1],
-            positionAnnotation:
-              node.data.UC != null
-                ? [-2, node.data.UC[0]]
-                : node.data.GW != null
-                  ? [-1, node.data.GW[0]]
-                  : node.data.DM != null
-                    ? [0, node.data.DM[0]]
-                    : node.data.GB != null
-                      ? [1, node.data.GB[0]]
-                      : [null, 1],
-            title: node.data.N != null ? node.data.N[0] : '',
-            comment: node.data.C != null ? node.data.C[0] : '',
-
-            onCommentInput: this.handleCommentInput,
+          h(TeachingReview, {
+            active: showTeachingReview && sidebarTab === 'teaching',
+            review: teachingReview,
+            position: teachingPosition,
+            engineGameOngoing,
           }),
-
-          onChange: this.handleSidebarSplitChange,
-          onFinish: this.handleSidebarSplitFinish,
-        }),
+        ),
 
         onChange: this.handleWinrateGraphSplitChange,
         onFinish: this.handleWinrateGraphSplitFinish,

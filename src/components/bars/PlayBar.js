@@ -209,7 +209,7 @@ export default class PlayBar extends Component {
         },
         this.props.batchAnalysisRunning
           ? i18n.t('EngineSetup', 'Stop analysis')
-          : i18n.t('EngineSetup', 'Analyze this game'),
+          : i18n.t('EngineSetup', 'Analyze game'),
       ),
 
       h(
