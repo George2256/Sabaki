@@ -407,6 +407,7 @@ class Sabaki extends EventEmitter {
     engineIndex,
     rules = '',
     budget = 'standard',
+    learnerRank = '10k',
     useLLM = false,
   } = {}) {
     if (this.teachingStarting || this.state.teachingReview?.running) return
@@ -445,6 +446,7 @@ class Sabaki extends EventEmitter {
         position,
         engineIndex,
         budget,
+        learnerRank,
         useLLM,
         language: setting.get('app.lang'),
       })

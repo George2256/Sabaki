@@ -1,0 +1,242 @@
+[
+  {
+    "id": "ggg-game1-7",
+    "moveNumber": 7,
+    "theme": "direction",
+    "tier": "advanced",
+    "pattern": "先比较常见布局与实战布局，再解释已有棋子的效率和选择目的。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-10",
+    "moveNumber": 10,
+    "theme": "direction",
+    "tier": "club",
+    "pattern": "把挂角、夹击与对另一颗棋子效率的影响连起来，解释下这手想改变什么。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-15",
+    "moveNumber": 15,
+    "theme": "attack",
+    "tier": "club",
+    "pattern": "解释主动挑起战斗的目的，同时指出读棋能力与战斗风险如何影响这个选择。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-23",
+    "moveNumber": 23,
+    "theme": "connection",
+    "tier": "club",
+    "pattern": "先找同时影响两块棋的攻防要点，再解释逃出时为何还要照顾另一颗棋子。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-24",
+    "moveNumber": 24,
+    "theme": "timing",
+    "tier": "club",
+    "pattern": "讲清试应手为何选在此时；用对手的回应展示后续目的。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-25",
+    "moveNumber": 25,
+    "theme": "connection",
+    "tier": "foundation",
+    "pattern": "给出不连接的具体反击检验，说明为何此处需要实接，而不是只说形状好。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-27",
+    "moveNumber": 27,
+    "theme": "defense",
+    "tier": "club",
+    "pattern": "看似过分的着法要与平凡逃出对比；候选变化可能揭示实战选择的必要性。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-39",
+    "moveNumber": 39,
+    "theme": "exchange",
+    "tier": "club",
+    "pattern": "指出一组看似便宜的交换如何在后续战斗中帮助对方，解释交换的代价。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-43",
+    "moveNumber": 43,
+    "theme": "counterplay",
+    "tier": "advanced",
+    "pattern": "比较安稳路线与复杂路线；说明主动制造变化的目的与风险。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-56",
+    "moveNumber": 56,
+    "theme": "defense",
+    "tier": "club",
+    "pattern": "展示两种保全棋块的后续手段，说明为何攻击不再像之前那样紧迫。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-61",
+    "moveNumber": 61,
+    "theme": "sacrifice",
+    "tier": "advanced",
+    "pattern": "先指出被弃掉的棋子，再解释它们如何换取外围加固；区分局部损失与交换收益。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-66",
+    "moveNumber": 66,
+    "theme": "tactics",
+    "tier": "club",
+    "pattern": "围绕具体目标棋块讲手筋，把着法与限制对手活动的效果联系起来。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-69",
+    "moveNumber": 69,
+    "theme": "timing",
+    "tier": "club",
+    "pattern": "讲先手交换与试应手的顺序，先检验对方可以如何抵抗。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-80",
+    "moveNumber": 80,
+    "theme": "judgment",
+    "tier": "advanced",
+    "pattern": "区分当前局势已经有利与这手棋是否最佳，不用最终胜负替代着法比较。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-88",
+    "moveNumber": 88,
+    "theme": "attack",
+    "tier": "club",
+    "pattern": "把已有厚势和能否继续攻击联系起来，用对手最终补棋解释这段变化的得失。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-93",
+    "moveNumber": 93,
+    "theme": "judgment",
+    "tier": "advanced",
+    "pattern": "在看似顺利时找巩固优势的机会，比较实战与更稳健的候选。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-103",
+    "moveNumber": 103,
+    "theme": "invasion",
+    "tier": "advanced",
+    "pattern": "说明打入以前做的交换怎样改变抵抗条件；不把意外性当作正确性的证明。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-106",
+    "moveNumber": 106,
+    "theme": "timing",
+    "tier": "club",
+    "pattern": "同一个局部目的可以有不同落子顺序，用候选着法解释为何实战过早。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-109",
+    "moveNumber": 109,
+    "theme": "defense",
+    "tier": "club",
+    "pattern": "以损失控制为目标解释沉着的应对，避免只按攻击性评价着法。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-119",
+    "moveNumber": 119,
+    "theme": "exchange",
+    "tier": "advanced",
+    "pattern": "通过具体应答比较紧凑和缓慢的走法，再联系留下的余味与后续利用。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-121",
+    "moveNumber": 121,
+    "theme": "endgame",
+    "tier": "club",
+    "pattern": "把局部收益放回当前棋局阶段比较，解释为何可下的官子仍可能过小。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-125",
+    "moveNumber": 125,
+    "theme": "followup",
+    "tier": "club",
+    "pattern": "指出第一手瞄着的下一手，用对方防守需求解释它的大小。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-129",
+    "moveNumber": 129,
+    "theme": "attack",
+    "tier": "club",
+    "pattern": "指出切断的具体目标，以及分开之后准备攻击哪一块棋。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  },
+  {
+    "id": "ggg-game1-142",
+    "moveNumber": 142,
+    "theme": "sacrifice",
+    "tier": "advanced",
+    "pattern": "承认局部提子的收益，再与别处损失比较，不因吃到棋就认为交换有利。",
+    "source": "https://github.com/gogameguru/commented-go-games/blob/master/2016/05/20160309-Lee-Sedol-vs-AlphaGo-Commentary-An-Younggil.sgf",
+    "reviewer": "An Younggil 8p",
+    "verification": "Source commentary read; modern engine agreement not assumed."
+  }
+]

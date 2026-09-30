@@ -1,5 +1,8 @@
 const {coloredPV, replay, policyIndex} = require('./position')
 const {t} = require('./strings')
+const {enrichLesson, groups} = require('./facts')
+const {learnerProfile} = require('./learner')
+const {localExplanation} = require('./coach')
 
 const budgets = {
   quick: {scan: 100, deep: 400, seconds: 2},
@@ -13,7 +16,7 @@ function losses(best, played, color) {
     winrate: sign * (best.winrate - played.winrate) * 100,
   }
 }
-function selectMoments(position, scan, limit = 5) {
+function selectMoments(position, scan, limit = 5, learner = learnerProfile()) {
   const options = position.moves
     .map(([color, actual], index) => {
       const before = scan[index].candidates[0] || scan[index].root,
@@ -33,9 +36,22 @@ function selectMoments(position, scan, limit = 5) {
         Math.max(0, loss.score) +
         Math.max(0, loss.winrate) / 8 +
         (crossing && loss.winrate > 5 ? 3 : 0)
+      // Prefer concrete liberty problems for learners who are still building
+      // reading habits. Search loss still gates and verifies every selection.
+      const teachingBonus =
+        priority >= 1 &&
+        learner.tier === 'foundation' &&
+        groups(replay(position, position.moves.slice(0, index))).some(
+          (g) => g.color === color && g.liberties.length <= 2,
+        )
+          ? 2
+          : 0
       return {
         index,
-        priority: priority + (before.move === actual && gap > 1.5 ? 2 : 0),
+        priority:
+          priority +
+          teachingBonus +
+          (before.move === actual && gap > 1.5 ? 2 : 0),
         crossing,
       }
     })
@@ -81,6 +97,8 @@ async function diagram(client, position, index, kind, moves, analysis) {
     id: `${index + 1}-${kind}`,
     kind,
     moves,
+    legal: true,
+    source: kind === 'actual' ? 'sgf' : 'katago',
     verified: kind !== 'actual',
     sourceId: analysis?.id || null,
     replayId: validation.id,
@@ -88,7 +106,14 @@ async function diagram(client, position, index, kind, moves, analysis) {
     visits: analysis?.candidates[0].visits || null,
   }
 }
-async function verifyMoment(client, position, moment, budget, language) {
+async function verifyMoment(
+  client,
+  position,
+  moment,
+  budget,
+  language,
+  learner = learnerProfile(),
+) {
   const {index} = moment
   const [color, actual] = position.moves[index]
   const firstBest = await client.analyze(position, index, {
@@ -214,7 +239,7 @@ async function verifyMoment(client, position, moment, budget, language) {
     gap: round(gap || 0),
   }
   const beforeBoard = replay(position, position.moves.slice(0, index))
-  return {
+  const lesson = {
     id: `lesson-${index + 1}`,
     ...position.anchors[index],
     index,
@@ -222,6 +247,7 @@ async function verifyMoment(client, position, moment, budget, language) {
     actual,
     kind,
     stable,
+    learner,
     summary: t(
       language,
       kind === 'good' ? 'goodComparison' : 'comparison',
@@ -267,5 +293,9 @@ async function verifyMoment(client, position, moment, budget, language) {
         : null,
     },
   }
+  enrichLesson(lesson, position)
+  lesson.paragraphs = localExplanation(lesson, language)
+  lesson.explanation = {source: 'local', status: 'local'}
+  return lesson
 }
 module.exports = {budgets, losses, selectMoments, verifyMoment}

@@ -1,4 +1,65 @@
 const en = {
+  coachPressure:
+    'In {diagram}, step {step}, {player} plays {move} and reduces the original {opponent} group at {target} from {before} to {after} liberties. Notice which escape or connection point is being removed. Read a direct answer and a counterattack before deciding whether to defend; fewer liberties alone do not prove a forced result.',
+  coachLibertyChoice:
+    'Compare the first moves: {best} increases the original group at {target} from {before} to {after} liberties; {comparison} starts with {actual} and leaves that group at {actualAfter}. This shows a concrete difference in defensive timing. Read the opponent’s reply to see whether that extra room matters here; it does not explain the entire score difference by itself.',
+  coachGoodChoice:
+    'The played move agrees closely with the searched recommendation {best}. Compare it with {actual} in the alternative diagram: predict the opponent’s strongest reply before looking at the continuation, and find what changes on the board.',
+  rankKyu: '{rank} kyu',
+  rankDan: '{rank} dan',
+  styleSources: 'Teaching structure references:',
+  learner: 'Learner strength',
+  beginner: 'Beginner',
+  learnerNote:
+    'Self-assessed rank adjusts the teaching depth; KataGo keeps its full playing strength.',
+  localInterpretation: 'Board-based explanation',
+  reference: '{diagram} · step {step}',
+  'llm-invalid': 'The explanation did not pass reference checks after a retry.',
+  'llm-timeout': 'The language model timed out.',
+  'llm-connection': 'Unable to reach the language model.',
+  'invalid-learner': 'Choose a learner strength.',
+  'region-corner': 'the corner',
+  'region-side': 'the side',
+  'region-center': 'the center',
+  'region-pass': 'passing',
+  coachUrgent:
+    'First check the {player} group at {group}: it has only one liberty, at {liberty}. Before playing elsewhere, read the opponent’s capture and your escape. One liberty is a concrete warning; it does not alone prove the group is lost.',
+  coachCapture:
+    'In {diagram}, step {step}, {player} plays {move} and removes {count} {opponent} stones including {target}. Pause just before this move and find the last liberty. The capture is visible in this line; whether accepting that trade is worthwhile requires the whole-board comparison.',
+  coachEscape:
+    'In {diagram}, step {step}, {player} plays {move}. The group originally at {target} goes from one liberty to {count}. This is the concrete defensive effect to notice. More liberties give reading room, but are not a proof of life.',
+  coachConnect:
+    'In {diagram}, step {step}, {player} plays {move} and joins the groups at {first} and {second} into one connected chain. Compare their liberties before and after joining. Connection can reduce separate defensive burdens; it is not always the best choice.',
+  coachAtari:
+    'In {diagram}, step {step}, {player} plays {move}, leaving the {opponent} group at {target} with only {liberty} as a liberty. Stop here and read the reply: can that group extend, connect or capture? An atari is a threat, not by itself a forced result.',
+  coachCompare:
+    'The played move {actual} concerns {actualRegion}; the recommendation {best} concerns {bestRegion}. Start both diagrams at step zero and compare what each first move addresses. These short lines show a search preference, but do not yet establish a specific strategic cause for the difference.',
+  coachRead:
+    'Try reading the opponent’s reply before moving the slider: in {diagram}, step {step}, {player} plays {move}. Return to the preceding step and ask which stones that reply affects. Use the recommended line to check how the response changes.',
+  'habit-liberties-foundation':
+    'For the next game: count the liberties of your nearby groups before looking for a big point. Ask whether the opponent can capture immediately and whether extending or connecting changes that.',
+  'habit-liberties-club':
+    'For the next game: compare escaping directly, connecting and counterattacking. Read the opponent’s strongest reply to each before choosing the order of moves.',
+  'habit-liberties-advanced':
+    'Check the defensive move’s opportunity cost: can you accept the threat, counterattack or trade elsewhere? Extra liberties alone do not settle that comparison.',
+  'habit-connect-foundation':
+    'For the next game: look for nearby friendly groups that still need separate protection. Read the opponent’s cutting attempt before deciding to connect.',
+  'habit-connect-club':
+    'Ask whether connecting reduces a real defensive burden, or spends a move linking groups that already have room. Compare the opponent’s best cutting and attacking replies.',
+  'habit-connect-advanced':
+    'Treat connection as a candidate, not a rule. Compare the connected shape against counterplay or a planned sacrifice, with the whole-board cost in view.',
+  'habit-response-foundation':
+    'Before playing, ask: what is the opponent’s strongest reply? Count liberties on both sides and read at least that reply before judging a move by how it looks.',
+  'habit-response-club':
+    'Replay the position just before the tactical event. Compare answering directly, connecting and counterattacking; do not assume the line is forced just because it is shown.',
+  'habit-response-advanced':
+    'Distinguish the local tactical result from the value of the trade. Check whether sacrificing stones buys initiative or a larger gain elsewhere before calling the capture decisive.',
+  'habit-compare-foundation':
+    'Use this as a reading exercise: choose a candidate, predict one opponent reply, then compare with the diagram. Do not memorize the recommendation without a reason you can see on the board.',
+  'habit-compare-club':
+    'Compare what each candidate gains and what response it allows. If the short lines do not reveal the cause, keep the conclusion tentative and deepen the reading.',
+  'habit-compare-advanced':
+    'Check an alternative plan and its strongest reply. A score gap selects a question to investigate; it does not by itself establish direction, timing or sente.',
   title: 'Teaching explanation',
   close: 'Close teaching section',
   'engine-busy': 'Wait for the current engine move or command to finish.',
@@ -93,6 +154,66 @@ const en = {
   skipped: '{count} moments lacked sufficient evidence.',
 }
 const zh = {
+  coachPressure:
+    '看{diagram}第 {step} 步：{player}下在 {move}，让原来 {target} 处的{opponent}棋块从 {before} 气减少到 {after} 气。注意对方封住了哪一个逃出或连接的位置，再比较直接应和反击。气减少说明活动余地受到限制，但不能直接判定后续是被迫的。',
+  coachLibertyChoice:
+    '先比较第一手的作用：推荐 {best} 把原来 {target} 处棋块的气从 {before} 增加到 {after}；{comparison}先走 {actual} 后，这块棋是 {actualAfter} 气。这说明两个选择在防守时机上有具体差别。接着读对方的应手，检查多出的余地在这里有什么用；不能仅凭这一点解释全部目差。',
+  coachGoodChoice:
+    '实战与引擎推荐的 {best} 很接近。请把它与对照图的 {actual} 比较：先猜对方最强的应手，再看续着，找出棋盘上发生了什么变化。',
+  rankKyu: '{rank} 级',
+  rankDan: '{rank} 段',
+  styleSources: '讲解结构参考：',
+  learner: '学员棋力',
+  beginner: '刚入门',
+  learnerNote: '棋力按自我评估选择，用于调整讲解深度；引擎仍按完整棋力分析。',
+  localInterpretation: '棋盘事实讲解',
+  reference: '{diagram} · 第 {step} 步',
+  'llm-invalid': '重试后，讲解仍未通过引用校验。',
+  'llm-timeout': '语言模型响应超时。',
+  'llm-connection': '未能连接语言模型。',
+  'invalid-learner': '请选择学员棋力。',
+  'region-corner': '角部',
+  'region-side': '边上',
+  'region-center': '中腹',
+  'region-pass': '停着',
+  coachUrgent:
+    '先看 {group} 处的{player}棋块：它只剩 {liberty} 这一口气。落子到别处之前，要先读清对方提子和己方逃出的变化。只剩一气是明确的警报，但不能仅凭气少就断言这块棋已经死了。',
+  coachCapture:
+    '看{diagram}第 {step} 步：{player}下在 {move}，提掉了包括 {target} 在内的 {count} 颗{opponent}棋子。先停在前一步，找出这些棋最后的一口气。这段变化确实出现了提子；是否值得接受这个交换，还要比较全局得失。',
+  coachEscape:
+    '看{diagram}第 {step} 步：{player}下在 {move}，原来 {target} 处只剩一气的棋块增加到 {count} 气。这是这手棋可以直接看见的防守作用。气变多意味着多了腾挪空间，但还不能据此说已经做活。',
+  coachConnect:
+    '看{diagram}第 {step} 步：{player}下在 {move}，把 {first} 和 {second} 处原本分开的棋块接成了一块。对比连接前后的气，看看是否减少了两块棋分别受攻的负担。连接有价值，但并非看到断点就一定要补。',
+  coachAtari:
+    '看{diagram}第 {step} 步：{player}下在 {move}，使 {target} 处的{opponent}只剩 {liberty} 这一口气。先别往下翻，试着读对方能否长出、连接或反提。这里的打吃是具体威胁，不能直接等同于必然吃住。',
+  coachCompare:
+    '实战 {actual} 着眼于{actualRegion}，推荐的 {best} 着眼于{bestRegion}。先把两张图都退到起点，比较第一手分别照顾了什么。这段短变化能说明引擎的选择倾向，但还不足以确认差距背后的具体战略原因。',
+  coachRead:
+    '先试着猜对方的应手，再翻变化：{diagram}第 {step} 步，{player}下在 {move}。退回前一步，看看这手棋影响了哪些棋子，再用推荐图检查对方的应对有什么变化。',
+  'habit-liberties-foundation':
+    '下次遇到类似局面，先数附近己方棋块的气，再找大场。问自己：对方下一手能不能直接提子？长出或连接以后，这个威胁有没有改变？',
+  'habit-liberties-club':
+    '下次先比较直接逃出、连接和反击。每个方案都要读对方最强的应手，再决定落子的顺序。',
+  'habit-liberties-advanced':
+    '进一步比较防守的机会成本：能否承受局部威胁、转为反攻或在别处交换？气增加了，并不能替代这些方案的全局比较。',
+  'habit-connect-foundation':
+    '下次先找附近还需要分别照顾的己方棋块。不要只看两块棋离得近，先读对方能不能切断，再决定是否连接。',
+  'habit-connect-club':
+    '判断连接是否减少了真实的防守负担，还是花了一手去连接本来就有余地的棋。分别读对方最强的切断和攻击。',
+  'habit-connect-advanced':
+    '把连接当成候选方案，比较反击和有计划的弃子；结合全局代价判断，不把连接本身当作目的。',
+  'habit-response-foundation':
+    '每次落子前先问：对方最厉害的应手是什么？数清双方棋块的气，至少读到对方这一手，再判断自己的着法。',
+  'habit-response-club':
+    '退回战术发生的前一步，比较直接应、连接和反击。图里展示的是一种经过搜索的变化，不代表每一步都被迫如此。',
+  'habit-response-advanced':
+    '把局部战术结果与交换价值分开判断。提子之前先检查弃子能否换来主动权或其他地方的收益，不把吃到棋子直接等同于全局有利。',
+  'habit-compare-foundation':
+    '把这里当成练习：先选一手，猜对方的一手应对，再对照变化图。记住的是棋盘上能看见的理由，而不是推荐坐标。',
+  'habit-compare-club':
+    '比较每个候选获得了什么，又允许对方怎样应对。短变化看不清原因时，先保留判断，再把变化读深。',
+  'habit-compare-advanced':
+    '补读另一种计划及其最强应对。目差只是在提示值得研究的问题，不能单独证明行棋方向、时机或先手。',
   title: '教学讲解',
   close: '关闭教学板块',
   'engine-busy': '请等待当前引擎落子或命令完成，再开始讲解。',
@@ -181,6 +302,12 @@ const zh = {
 // Traditional strings share technical names and have their own UI vocabulary.
 const hant = {
   ...zh,
+  learner: '學員棋力',
+  beginner: '剛入門',
+  learnerNote: '棋力按自我評估選擇，用於調整講解深度；引擎仍按完整棋力分析。',
+  localInterpretation: '棋盤事實講解',
+  reference: '{diagram} · 第 {step} 步',
+  styleSources: '講解結構參考：',
   title: '教學講解',
   close: '關閉教學板塊',
   'engine-busy': '請等待目前引擎落子或命令完成，再開始講解。',

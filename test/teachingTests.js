@@ -1,5 +1,5 @@
 import assert from 'assert'
-import {mkdtemp, writeFile, rm} from 'fs/promises'
+import {mkdtemp, writeFile, readFile, rm} from 'fs/promises'
 import {join, resolve} from 'path'
 import {tmpdir} from 'os'
 import sgf from '@sabaki/sgf'
@@ -18,6 +18,9 @@ import {
   explain,
 } from '../src/teaching/llm.js'
 import {createService} from '../src/teaching/service.js'
+import {groups, describeLine, enrichLesson} from '../src/teaching/facts.js'
+import {learnerProfile} from '../src/teaching/learner.js'
+import {localExplanation} from '../src/teaching/coach.js'
 
 const source = '(;SZ[9]KM[7.5]RU[Chinese]C[keep this];B[ai];W[cc];B[gg];W[])'
 function position(content = source) {
@@ -275,7 +278,9 @@ describe('teaching evidence and process boundaries', function () {
     assert.equal(service.state.phase, 'complete')
     assert.equal(service.state.llmFallback, true)
     assert.equal(service.state.cards.length, 1)
-    assert(!service.state.cards[0].paragraphs)
+    assert(service.state.cards[0].paragraphs.length >= 2)
+    assert.equal(service.state.cards[0].explanation.source, 'local')
+    assert.equal(service.state.cards[0].explanation.reason, 'llm-invalid')
     assert(service.state.cards[0].summary)
   })
   it('keeps completed cards, authenticates the model and never mutates the snapshot', async () => {
@@ -371,10 +376,14 @@ describe('teaching evidence and process boundaries', function () {
       requestPrefix(service.cache.scan[0].id),
     )
     const finished = calls.length
-    service.start({...input, language: 'zh-Hans'})
+    service.start({...input, language: 'zh-Hans', learnerRank: '3d'})
     await service.job.promise
     assert.equal(calls.length, finished)
     assert.match(service.state.cards[0].summary, /实战/)
+    assert.equal(service.state.cards[0].learner.tier, 'advanced')
+    assert(
+      service.state.cards[0].paragraphs.some((p) => /时机|先手/.test(p.text)),
+    )
   })
   it('invalidates cached analysis for changed history, rules, komi, budget, engine or model contents', async () => {
     const {service, calls, setVersion} = countedService()
@@ -434,46 +443,61 @@ describe('teaching evidence and process boundaries', function () {
       assert.equal(calls[previous].turn, 0)
     }
   })
-  it('rejects forged LLM references, coordinates and metrics; permits only cited interpretation', async () => {
-    const lesson = {
-      id: 'lesson',
-      diagrams: [{id: 'recommended', verified: true}],
+  it('permits real coordinates, numbered moves and natural teaching language, rejects forged references and metrics, and retries malformed output once', async () => {
+    const client = new KataGo(engine, join(directory, 'analysis.cfg'))
+    let lesson
+    try {
+      lesson = await verifyMoment(
+        client,
+        position().value,
+        {index: 0},
+        budgets.quick,
+        'zh-Hans',
+      )
+    } finally {
+      await client.close()
+    }
+    const fact = lesson.facts.find(
+      (f) => f.diagramId.endsWith('-recommended') && f.step === 1,
+    )
+    const paragraph = {
+      text: '推荐图黑1下在 E5。先补一手，再观察对方的应手。',
+      refs: [{diagramId: fact.diagramId, step: 1}],
+      factIds: [fact.id],
     }
     const valid = {
-      lessonId: 'lesson',
+      lessonId: lesson.id,
       paragraphs: [
-        {
-          text: 'Compare the shapes in the recommended line.',
-          evidenceIds: ['recommended'],
-        },
+        paragraph,
+        {...paragraph, text: '先猜对方的应手，再翻变化图。'},
       ],
     }
-    assert.equal(validateExplanation(valid, lesson).length, 1)
-    for (const bad of [
-      {...valid, lessonId: 'other'},
-      {
-        ...valid,
-        paragraphs: [{text: 'Play at Q16.', evidenceIds: ['recommended']}],
-      },
-      {
-        ...valid,
-        paragraphs: [
-          {text: 'It loses 6 points.', evidenceIds: ['recommended']},
-        ],
-      },
-      {
-        ...valid,
-        paragraphs: [{text: 'Compare the shapes.', evidenceIds: ['invented']}],
-      },
+    assert.equal(validateExplanation(valid, lesson).length, 2)
+    for (const changed of [
+      {text: 'Play at Q16.'},
+      {text: 'Play at A999.'},
+      {text: '白1下在 E5。'},
+      {text: '看推荐图第 40 步。'},
+      {text: 'It loses 6 points.'},
+      {text: '这里必死。'},
+      {refs: [{diagramId: 'invented', step: 1}]},
+      {refs: [{diagramId: fact.diagramId, step: 500}]},
+      {factIds: ['invented']},
     ])
-      assert.throws(() => validateExplanation(bad, lesson))
+      assert.throws(() =>
+        validateExplanation(
+          {...valid, paragraphs: [{...paragraph, ...changed}, paragraph]},
+          lesson,
+        ),
+      )
     assert.throws(() =>
       validateConfig({
         endpoint: 'http://example.com/v1/chat/completions',
         model: 'x',
       }),
     )
-    const controller = new AbortController()
+    let calls = 0,
+      received
     const result = await explain(
       lesson,
       validateConfig({
@@ -481,16 +505,225 @@ describe('teaching evidence and process boundaries', function () {
         model: 'test',
       }),
       {
-        signal: controller.signal,
-        fetch: async () => ({
-          ok: true,
-          text: async () =>
-            JSON.stringify({
-              choices: [{message: {content: JSON.stringify(valid)}}],
-            }),
-        }),
+        signal: new AbortController().signal,
+        fetch: async (_, options) => {
+          calls++
+          received = JSON.parse(JSON.parse(options.body).messages[1].content)
+          return {
+            ok: true,
+            text: async () =>
+              JSON.stringify({
+                choices: [
+                  {
+                    message: {
+                      content:
+                        calls === 1 ? 'invalid JSON' : JSON.stringify(valid),
+                    },
+                  },
+                ],
+              }),
+          }
+        },
       },
     )
-    assert.equal(result.length, 1)
+    assert.equal(result.length, 2)
+    assert.equal(calls, 2)
+    assert.equal(received.diagrams[0].source, 'sgf')
+    assert.equal(received.diagrams[0].legal, true)
+    assert.equal(received.diagrams[0].verified, false)
+    assert(received.context.groups)
+    assert.equal(received.styleReferences.length, 2)
+    assert.equal(received.learner.rank, '10k')
+  })
+  it('keeps timeout and cancellation distinct and never retries a failed connection', async () => {
+    const client = new KataGo(engine, join(directory, 'analysis.cfg'))
+    let lesson
+    try {
+      lesson = await verifyMoment(
+        client,
+        position().value,
+        {index: 0},
+        budgets.quick,
+        'en',
+      )
+    } finally {
+      await client.close()
+    }
+    const waiting = (_, {signal}) =>
+      new Promise((resolve, reject) =>
+        signal.addEventListener('abort', () => reject(new Error('aborted')), {
+          once: true,
+        }),
+      )
+    await assert.rejects(
+      explain(
+        lesson,
+        {},
+        {fetch: waiting, signal: new AbortController().signal, timeout: 20},
+      ),
+      /llm-timeout/,
+    )
+    const controller = new AbortController()
+    const pending = explain(
+      lesson,
+      {},
+      {fetch: waiting, signal: controller.signal},
+    )
+    controller.abort()
+    await assert.rejects(pending, {name: 'AbortError'})
+    let calls = 0
+    await assert.rejects(
+      explain(
+        lesson,
+        {},
+        {
+          signal: new AbortController().signal,
+          fetch: async () => {
+            calls++
+            return {ok: false}
+          },
+        },
+      ),
+      /llm-connection/,
+    )
+    assert.equal(calls, 1)
+  })
+  it('extracts concrete capture, connection and escaping facts without inventing life/death', () => {
+    const capture = position(
+      '(;SZ[9]KM[7.5]RU[Chinese]AB[ba][ab][cb]AW[bb];B[bc])',
+    ).value
+    const fact = describeLine(capture, 0, {
+      id: 'capture',
+      moves: capture.moves,
+    })[0]
+    assert.deepEqual(fact.captured, [{color: 'W', stones: ['B8']}])
+    const connect = position('(;SZ[9]KM[7.5]RU[Chinese]AB[dd][fd];B[ed])').value
+    assert.equal(
+      describeLine(connect, 0, {id: 'connect', moves: connect.moves})[0]
+        .connected.length,
+      2,
+    )
+    const escape = position(
+      '(;SZ[9]KM[7.5]RU[Chinese]AW[ba][ab][cb]AB[bb];B[bc])',
+    ).value
+    const escapeFact = describeLine(escape, 0, {
+      id: 'escape',
+      moves: escape.moves,
+    })[0]
+    assert.equal(escapeFact.escaped[0].anchor, 'B8')
+    assert.equal(escapeFact.escaped[0].before, 1)
+    assert.equal(escapeFact.escaped[0].after, 3)
+    assert.throws(() => learnerProfile('invented'), /invalid-learner/)
+  })
+  it('explains a shared target and defensive timing in a real game instead of choosing an unrelated later event', async () => {
+    const {value} = position(
+      await readFile(
+        resolve('test/resources/teaching/lee-alphago-1.sgf'),
+        'utf8',
+      ),
+    )
+    const index = 38
+    const diagrams = [
+      {
+        id: '39-actual',
+        kind: 'actual',
+        moves: value.moves.slice(index, index + 4),
+      },
+      {
+        id: '39-recommended',
+        kind: 'recommended',
+        moves: [
+          ['B', 'H14'],
+          ['W', 'J12'],
+        ],
+      },
+      {
+        id: '39-punishment',
+        kind: 'punishment',
+        moves: [
+          ['B', 'M11'],
+          ['W', 'N11'],
+          ['B', 'L11'],
+          ['W', 'H14'],
+        ],
+      },
+    ]
+    const lesson = {
+      index,
+      color: 'B',
+      kind: 'bad',
+      learner: learnerProfile('5k'),
+      diagrams,
+      context: {},
+    }
+    enrichLesson(lesson, value)
+    const paragraphs = localExplanation(lesson, 'zh-Hans')
+    assert.match(paragraphs[0].text, /J14.*2.*4/)
+    assert.match(paragraphs[1].text, /第 4 步.*H14.*J14/)
+    assert.deepEqual(paragraphs[1].refs, [
+      {diagramId: '39-punishment', step: 4},
+    ])
+  })
+  it('replays all 24 source-backed teaching fragments and produces traceable local explanations', async () => {
+    const data = JSON.parse(
+      await readFile(
+        resolve('src/teaching/reference-library/patterns.json'),
+        'utf8',
+      ),
+    )
+    const {value} = position(
+      await readFile(
+        resolve('test/resources/teaching/lee-alphago-1.sgf'),
+        'utf8',
+      ),
+    )
+    validateSnapshot(value)
+    assert.equal(data.length, 24)
+    const names = new Set()
+    for (const example of data) {
+      assert(!names.has(example.id))
+      names.add(example.id)
+      assert.equal(example.reviewer, 'An Younggil 8p')
+      const index = example.moveNumber - 1
+      const moves = value.moves.slice(index, index + 8)
+      const diagrams = ['actual', 'recommended', 'punishment'].map((kind) => ({
+        id: `${example.id}-${kind}`,
+        kind,
+        legal: true,
+        source: 'sgf',
+        moves,
+      }))
+      // Reuse the recorded line to exercise replay facts, not to pretend that
+      // historical variations are modern KataGo recommendations.
+      const lesson = {
+        id: example.id,
+        color: value.moves[index][0],
+        kind: 'bad',
+        learner: learnerProfile('10k'),
+        diagrams,
+        context: {
+          groups: groups(replay(value, value.moves.slice(0, index))),
+          stones: [],
+        },
+        facts: diagrams.flatMap((d) => describeLine(value, index, d)),
+      }
+      const paragraphs = localExplanation(lesson, 'zh-Hans')
+      assert(paragraphs.length >= 2)
+      for (const paragraph of paragraphs) {
+        assert(
+          paragraph.refs.every((r) =>
+            diagrams.some(
+              (d) => d.id === r.diagramId && r.step <= d.moves.length,
+            ),
+          ),
+        )
+        assert(
+          paragraph.factIds.every((id) =>
+            lesson.facts.some((f) => f.id === id),
+          ),
+        )
+        assert(!/必死|必活|保证先手/.test(paragraph.text))
+      }
+    }
   })
 })

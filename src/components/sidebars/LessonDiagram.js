@@ -18,6 +18,10 @@ export default class LessonDiagram extends Component {
   componentWillUnmount() {
     this.observer.disconnect()
   }
+  revealStep(step) {
+    this.setState({step})
+    this.element.closest('.lesson-diagram').scrollIntoView({block: 'nearest'})
+  }
   render({position, index, diagram, language}, {step, width}) {
     const t = (key, params) => text(language, key, params)
     const prefix = position.moves.slice(0, index)
@@ -34,6 +38,7 @@ export default class LessonDiagram extends Component {
       {
         class: 'lesson-diagram',
         'data-kind': diagram.kind,
+        'data-diagram-id': diagram.id,
         'aria-label': t(diagram.kind),
       },
       h('h4', {}, t(diagram.kind)),

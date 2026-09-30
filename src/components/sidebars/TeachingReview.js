@@ -3,6 +3,7 @@ import sabaki from '../../modules/sabaki.js'
 import {rules} from '../../teaching/position.js'
 import {t as text} from '../../teaching/strings.js'
 import LessonDiagram from './LessonDiagram.js'
+import {ranks} from '../../teaching/learner.js'
 
 const setting = {
   get: (key) => window.sabaki.setting.get(key),
@@ -11,11 +12,13 @@ const setting = {
 export default class TeachingReview extends Component {
   constructor(props) {
     super(props)
+    this.diagramRefs = {}
     this.state = {
       engines: [],
       engineIndex: '',
       rules: '',
       budget: setting.get('teaching.budget'),
+      learnerRank: setting.get('teaching.rank'),
       endpoint: 'http://127.0.0.1:11434/v1/chat/completions',
       model: '',
       token: '',
@@ -50,6 +53,7 @@ export default class TeachingReview extends Component {
               : Number(this.state.engineIndex),
           rules: this.state.rules,
           budget: this.state.budget,
+          learnerRank: this.state.learnerRank,
           useLLM: this.state.useLLM,
         })
       } catch (error) {
@@ -96,7 +100,11 @@ export default class TeachingReview extends Component {
         'label',
         {},
         h('span', {}, t(key)),
-        h('select', {value, disabled: busy, onChange}, options),
+        h(
+          'select',
+          {value, disabled: busy, onChange, 'aria-label': t(key)},
+          options,
+        ),
       )
     return h(
       'section',
@@ -154,6 +162,26 @@ export default class TeachingReview extends Component {
             h('option', {value}, t(value)),
           ),
         ),
+        field(
+          'learner',
+          state.learnerRank,
+          (evt) => {
+            this.setState({learnerRank: evt.currentTarget.value})
+            setting.set('teaching.rank', evt.currentTarget.value)
+          },
+          ranks.map((value) =>
+            h(
+              'option',
+              {value},
+              value === 'beginner'
+                ? t(value)
+                : t(value.endsWith('k') ? 'rankKyu' : 'rankDan', {
+                    rank: value.slice(0, -1),
+                  }),
+            ),
+          ),
+        ),
+        h('p', {class: 'lesson-note'}, t('learnerNote')),
         h(
           'details',
           {class: 'teaching-llm'},
@@ -258,36 +286,98 @@ export default class TeachingReview extends Component {
                 t('locate'),
               ),
             ),
-            h('p', {}, card.summary),
             card.warning && h('p', {class: 'teaching-error'}, card.warning),
+            h(
+              'div',
+              {
+                class: 'teaching-interpretation',
+                'data-source': card.explanation.source,
+              },
+              h(
+                'strong',
+                {},
+                t(
+                  card.explanation.source === 'llm'
+                    ? 'interpretation'
+                    : 'localInterpretation',
+                ),
+              ),
+              card.explanation.reason &&
+                h('p', {class: 'teaching-error'}, t(card.explanation.reason)),
+              card.paragraphs.map((paragraph) =>
+                h(
+                  'div',
+                  {class: 'teaching-paragraph'},
+                  h('p', {}, paragraph.text),
+                  h(
+                    'div',
+                    {class: 'teaching-references'},
+                    paragraph.refs.map((ref) =>
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          onClick: () =>
+                            this.diagramRefs[ref.diagramId]?.revealStep(
+                              ref.step,
+                            ),
+                        },
+                        t('reference', {
+                          diagram: t(
+                            card.diagrams.find((d) => d.id === ref.diagramId)
+                              .kind,
+                          ),
+                          step: ref.step,
+                        }),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
             card.diagrams.map((diagram) =>
               h(LessonDiagram, {
                 key: diagram.id,
+                ref: (component) => {
+                  this.diagramRefs[diagram.id] = component
+                },
                 position,
                 index: card.index,
                 diagram,
                 language,
               }),
             ),
-            card.paragraphs?.map((paragraph) =>
-              h(
-                'div',
-                {class: 'teaching-interpretation'},
-                h('strong', {}, t('interpretation')),
-                h('p', {}, paragraph.text),
-                h(
-                  'small',
-                  {},
-                  paragraph.evidenceIds
-                    .map((id) => t(card.diagrams.find((d) => d.id === id).kind))
-                    .join(' · '),
-                ),
-              ),
-            ),
             h(
               'details',
               {class: 'teaching-evidence'},
               h('summary', {}, t('evidence')),
+              h('p', {}, card.summary),
+              h(
+                'p',
+                {},
+                `${t('learner')}: ${card.learner.rank === 'beginner' ? t('beginner') : card.learner.rank}`,
+              ),
+              card.styleReferences?.length > 0 &&
+                h(
+                  'p',
+                  {class: 'teaching-sources'},
+                  t('styleSources'),
+                  ' ',
+                  h(
+                    'a',
+                    {
+                      href: card.styleReferences[0].source,
+                      target: '_blank',
+                      rel: 'noreferrer',
+                      onClick: (evt) => {
+                        evt.preventDefault()
+                        window.sabaki.shell.openExternal(evt.currentTarget.href)
+                      },
+                    },
+                    'Go Game Guru · An Younggil 8p',
+                  ),
+                  ' · CC BY-NC-SA 4.0',
+                ),
               h(
                 'p',
                 {},

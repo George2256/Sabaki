@@ -38,3 +38,6 @@
 .teaching-evidence p { white-space: pre-wrap; }
 .teaching-interpretation { border-left: 2px solid #aebc79; padding-left: 10px; margin: 12px 0; }
 .teaching-interpretation small { color: #aaa; }
+.teaching-references { display: flex; flex-wrap: wrap; gap: 4px; }
+#teaching-review .teaching-references button { font-size: 11px; padding: 3px 6px; color: #c8d7a3; }
+.teaching-sources a { color: #c8d7a3; }

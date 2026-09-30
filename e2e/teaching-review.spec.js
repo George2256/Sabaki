@@ -261,8 +261,26 @@ test('uses the optional LLM through main IPC and keeps its key out of settings',
                 lessonId: received.lessonId,
                 paragraphs: [
                   {
-                    text: '比较推荐变化与实战后的应对，观察棋形的差异。',
-                    evidenceIds: [received.diagrams[0].id],
+                    text: '实战图黑1下在 A1；先看对方怎样应对。',
+                    refs: [{diagramId: received.diagrams[0].id, step: 1}],
+                    factIds: [
+                      received.facts.find(
+                        (f) =>
+                          f.diagramId === received.diagrams[0].id &&
+                          f.step === 1,
+                      ).id,
+                    ],
+                  },
+                  {
+                    text: '先补一手前，先检查对方的威胁。',
+                    refs: [{diagramId: received.diagrams[0].id, step: 1}],
+                    factIds: [
+                      received.facts.find(
+                        (f) =>
+                          f.diagramId === received.diagrams[0].id &&
+                          f.step === 1,
+                      ).id,
+                    ],
                   },
                 ],
               }),
@@ -298,7 +316,10 @@ test('uses the optional LLM through main IPC and keeps its key out of settings',
     )
     expect(authorization).toBe('Bearer test-session-key')
     expect(JSON.stringify(received)).not.toContain('original comment')
-    expect(received.diagrams.every((d) => d.verified)).toBe(true)
+    expect(received.diagrams.every((d) => d.legal)).toBe(true)
+    expect(received.diagrams[0].source).toBe('sgf')
+    expect(received.diagrams[0].verified).toBe(false)
+    expect(received.learner.rank).toBe('10k')
     expect(received.engine.name).toBeUndefined()
     const userData = await electronApp.evaluate(({app}) =>
       app.getPath('userData'),
@@ -314,4 +335,49 @@ test('uses the optional LLM through main IPC and keeps its key out of settings',
   } finally {
     await new Promise((resolve) => server.close(resolve))
   }
+})
+
+test('learner strength adjusts explanation, reuses analysis and step references control only the teaching diagram', async ({
+  page,
+}, testInfo) => {
+  await prepare(page, testInfo)
+  await page.getByRole('combobox', {name: '学员棋力'}).selectOption('beginner')
+  await page.locator('.teaching-start').click()
+  await page.waitForFunction(
+    () => window.__sabaki.state.teachingReview?.phase === 'complete',
+  )
+  await expect(page.locator('.teaching-interpretation')).toContainText(
+    '棋盘事实讲解',
+  )
+  expect(
+    await page.evaluate(
+      () => window.__sabaki.state.teachingReview.cards[0].learner.tier,
+    ),
+  ).toBe('foundation')
+  const before = await page.evaluate(() => window.__sabaki.state.treePosition)
+  const reference = page.locator('.teaching-references button').first()
+  await reference.click()
+  const target = await page.evaluate(
+    () => window.__sabaki.state.teachingReview.cards[0].paragraphs[0].refs[0],
+  )
+  await expect(
+    page.locator(`[data-diagram-id="${target.diagramId}"] input[type=range]`),
+  ).toHaveValue(String(target.step))
+  expect(await page.evaluate(() => window.__sabaki.state.treePosition)).toBe(
+    before,
+  )
+  await page.getByRole('combobox', {name: '学员棋力'}).selectOption('3d')
+  await page.locator('.teaching-start').click()
+  await page.waitForFunction(
+    () => window.__sabaki.state.teachingReview?.phase === 'complete',
+  )
+  expect(
+    await page.evaluate(
+      () => window.__sabaki.state.teachingReview.cards[0].learner.tier,
+    ),
+  ).toBe('advanced')
+  expect(
+    await page.evaluate(() => window.__sabaki.state.teachingReview.reused),
+  ).toBeGreaterThan(5)
+  await expect(page.locator('.teaching-interpretation')).toContainText('时机')
 })

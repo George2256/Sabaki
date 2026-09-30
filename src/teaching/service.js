@@ -7,8 +7,9 @@ const argvsplit = require('argv-split')
 const {KataGo, config, supports} = require('./katago')
 const {validateSnapshot, fingerprint, policyIndex} = require('./position')
 const {budgets, selectMoments, verifyMoment} = require('./review')
-const {validateConfig, explain} = require('./llm')
+const {validateConfig, explain, referencePatterns} = require('./llm')
 const {t} = require('./strings')
+const {learnerProfile} = require('./learner')
 
 async function hashModel(filename, signal) {
   const hash = createHash('sha256')
@@ -71,6 +72,7 @@ class TeachingService extends EventEmitter {
       position: structuredClone(input.position),
       engine: {...engine},
       budget,
+      learner: learnerProfile(input.learnerRank),
       language: input.language || 'en',
       budgetName: input.budget in budgets ? input.budget : 'standard',
       llm: input.useLLM ? {...this.llm} : null,
@@ -83,6 +85,7 @@ class TeachingService extends EventEmitter {
       phase: 'preparing',
       engineIndex: input.engineIndex,
       budget: job.budgetName,
+      learner: job.learner,
       running: true,
       cards: [],
       completed: 0,
@@ -199,7 +202,7 @@ class TeachingService extends EventEmitter {
       cache.scan.push(structuredClone(result))
       this.update({completed: turn + 1})
     }
-    const moments = selectMoments(job.position, scan)
+    const moments = selectMoments(job.position, scan, 5, job.learner)
     this.update({
       phase: 'verifying',
       completed: 0,
@@ -215,6 +218,7 @@ class TeachingService extends EventEmitter {
           moment,
           job.budget,
           job.language,
+          job.learner,
         )
       } catch (error) {
         if (
@@ -246,12 +250,32 @@ class TeachingService extends EventEmitter {
           })
           this.update({
             cards: this.state.cards.map((card) =>
-              card.id === original.id ? {...card, paragraphs} : card,
+              card.id === original.id
+                ? {
+                    ...card,
+                    paragraphs,
+                    styleReferences: referencePatterns(original),
+                    explanation: {source: 'llm', status: 'complete'},
+                  }
+                : card,
             ),
           })
         } catch (error) {
           if (job.controller.signal.aborted) throw error
-          this.update({llmFallback: true})
+          const reason = ['llm-invalid', 'llm-timeout'].includes(error.message)
+            ? error.message
+            : 'llm-connection'
+          this.update({
+            llmFallback: true,
+            cards: this.state.cards.map((card) =>
+              card.id === original.id
+                ? {
+                    ...card,
+                    explanation: {source: 'local', status: 'fallback', reason},
+                  }
+                : card,
+            ),
+          })
         }
         this.update({completed: this.state.completed + 1})
       }
