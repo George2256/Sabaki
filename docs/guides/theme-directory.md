@@ -1,5 +1,23 @@
 # Themes
 
+## Bundled SabakiThemes
+
+This project includes all 15 themes from
+[Bill Hails' SabakiThemes](https://github.com/billhails/SabakiThemes), including
+Yunzi, Clamshell & Slate, Jade, Antique, and their lighting variants. Select one
+under **Preferences → Themes → Current Theme**; no separate download or
+installation is needed. Select **Default** to return to the original appearance.
+The selection is saved for the next launch. Bundled themes cannot be uninstalled
+from Preferences; user-installed themes can still be installed and removed.
+
+Custom images and the user's `styles.css` can override a theme. Clear custom
+image paths if you want to see the theme's original board, stones, and
+background.
+
+The runtime assets are stored in `themes/sabaki-themes/` and ship with the app.
+See that directory's `SOURCE.md`, `LICENSE.md`, and `UPSTREAM-README.md` for the
+pinned upstream revision, provenance, and license notices.
+
 ## Textures
 
 You can customize the appearance by replacing stone and board images. Here are

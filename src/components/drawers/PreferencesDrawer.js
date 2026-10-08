@@ -441,6 +441,9 @@ class ThemesTab extends Component {
     this.handleUninstallButton = async (evt) => {
       evt.preventDefault()
 
+      let currentTheme = setting.getThemes()[this.state.currentTheme]
+      if (!currentTheme || currentTheme.bundled) return
+
       let result = await showMessageBox(
         t('Do you really want to uninstall this theme?'),
         'warning',
@@ -449,7 +452,7 @@ class ThemesTab extends Component {
       )
       if (result === 1) return
 
-      let {path} = setting.getThemes()[this.state.currentTheme]
+      let {path} = currentTheme
 
       try {
         await rimraf(path)
@@ -548,6 +551,7 @@ class ThemesTab extends Component {
         ' ',
 
         currentTheme &&
+          !currentTheme.bundled &&
           h(
             'button',
             {

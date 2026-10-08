@@ -1,0 +1,9 @@
+{
+  "name": "Antique (Soft Light)",
+  "description": "A theme with single-convex \"old\" yunzi stones and a bamboo board",
+  "version": "1.0.12",
+  "author": "Bill Hails",
+  "homepage": "https://github.com/billhails/SabakiThemes",
+  "license": "CC0-1.0",
+  "main": "styles.css"
+}

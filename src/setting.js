@@ -18,6 +18,12 @@ for (let dir of [
 
 exports.settingsPath = path.join(exports.userDataDirectory, 'settings.json')
 exports.stylesPath = path.join(exports.userDataDirectory, 'styles.css')
+exports.bundledThemesDirectory = path.join(
+  __dirname,
+  '..',
+  'themes',
+  'sabaki-themes',
+)
 
 if (!fs.existsSync(exports.stylesPath)) {
   fs.writeFileSync(
@@ -286,8 +292,6 @@ exports.load = function () {
 }
 
 exports.loadThemes = function () {
-  let packagePath = (filename) =>
-    path.join(exports.themesDirectory, filename, 'package.json')
   let friendlyName = (name) =>
     name
       .split('-')
@@ -296,25 +300,34 @@ exports.loadThemes = function () {
       )
       .join(' ')
 
-  themesDict = fs
-    .readdirSync(exports.themesDirectory)
-    .map((x) => {
-      try {
-        return Object.assign({}, require(packagePath(x)), {
-          id: x,
-          path: path.join(packagePath(x), '..'),
-        })
-      } catch (err) {
-        return null
-      }
-    })
-    .reduce((acc, x) => {
-      if (x == null) return acc
+  themesDict = {}
 
-      x.name = friendlyName(x.name)
-      acc[x.id] = x
-      return acc
-    }, {})
+  for (let [directory, bundled] of [
+    [exports.bundledThemesDirectory, true],
+    [exports.themesDirectory, false],
+  ]) {
+    if (!fs.existsSync(directory)) continue
+
+    for (let filename of fs.readdirSync(directory)) {
+      try {
+        let themePath = path.join(directory, filename)
+        let theme = JSON.parse(
+          fs.readFileSync(path.join(themePath, 'package.json'), 'utf8'),
+        )
+        let id = bundled ? `bundled:sabaki-themes:${filename}` : filename
+
+        // Reserve bundled IDs so a user-installed theme cannot replace one.
+        if (!bundled && id.startsWith('bundled:')) continue
+
+        themesDict[id] = Object.assign({}, theme, {
+          id,
+          path: themePath,
+          bundled,
+          name: friendlyName(theme.name),
+        })
+      } catch (err) {}
+    }
+  }
 }
 
 exports.save = function () {

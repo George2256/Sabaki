@@ -1,0 +1,9 @@
+{
+  "name": "Jade (soft light)",
+  "description": "A subdued theme with jade stones and a kaya board",
+  "version": "1.0.9",
+  "author": "Bill Hails",
+  "homepage": "https://github.com/billhails/SabakiThemes",
+  "license": "CC0-1.0",
+  "main": "styles.css"
+}
