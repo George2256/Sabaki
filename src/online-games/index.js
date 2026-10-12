@@ -1,9 +1,10 @@
 const fox = require('./fox')
+const tencent = require('./tencent')
 
 // Providers own network endpoints and normalization; the renderer sees only
 // serializable player/game summaries and SGF content, never arbitrary URLs.
 function createService({
-  providers = [fox],
+  providers = [fox, tencent],
   fetchImpl = (...args) => fetch(...args),
 } = {}) {
   const registry = new Map(providers.map((provider) => [provider.id, provider]))
@@ -47,11 +48,16 @@ function createService({
     return input.trim()
   }
   return {
-    list: () => [...registry.values()].map(({id, name}) => ({id, name})),
+    list: () =>
+      [...registry.values()].map(({id, name, modes}) => ({
+        id,
+        name,
+        ...(modes ? {modes} : {}),
+      })),
     search: (input = {}) => {
       const source = provider(input.provider)
-      const keyword = value(input.keyword, 100)
-      if (!['id', 'nickname'].includes(input.mode))
+      const keyword = value(input.keyword, input.mode === 'link' ? 2000 : 100)
+      if (!(source.modes ?? ['id', 'nickname']).includes(input.mode))
         throw new Error('Invalid search mode.')
       return source.search(
         {keyword, mode: input.mode, cursor: input.cursor ?? null},

@@ -3,6 +3,14 @@ const simplified = {
   'Online Games…': '网棋棋谱…',
   'Online Games': '网棋棋谱',
   'Fox Go': '野狐围棋',
+  'Tencent Go': '腾讯围棋',
+  'Game share link': '棋谱分享链接',
+  'Paste a Tencent game share link': '粘贴腾讯围棋棋谱分享链接',
+  'Enter a valid Tencent game share link.':
+    '请输入有效的腾讯围棋棋谱分享链接。',
+  'Game records could not be loaded.': '暂时无法获取对局记录。',
+  'Tencent found this player, but its game list is currently unavailable. Try a game share link.':
+    '已找到腾讯围棋用户，但目前无法获取其对局列表。可切换到「棋谱分享链接」导入单局。',
   Server: '平台',
   'Search by': '查询方式',
   Nickname: '昵称',
@@ -30,6 +38,8 @@ const simplified = {
   'User not found. Check the nickname or try a player ID.':
     '未找到用户，请核对完整昵称或改用用户 ID。',
   'Fox player IDs must contain digits only.': '野狐用户 ID 只能包含数字。',
+  'Tencent player IDs must contain digits only.':
+    '腾讯围棋用户 ID 只能包含数字。',
   'The server could not load the games. Please try again.':
     '平台暂时无法获取棋谱，请重试。',
   'The server returned an invalid response.':
@@ -47,6 +57,14 @@ const traditional = {
   'Online Games…': '網棋棋譜…',
   'Online Games': '網棋棋譜',
   'Fox Go': '野狐圍棋',
+  'Tencent Go': '騰訊圍棋',
+  'Game share link': '棋譜分享連結',
+  'Paste a Tencent game share link': '貼上騰訊圍棋棋譜分享連結',
+  'Enter a valid Tencent game share link.':
+    '請輸入有效的騰訊圍棋棋譜分享連結。',
+  'Game records could not be loaded.': '暫時無法取得對局記錄。',
+  'Tencent found this player, but its game list is currently unavailable. Try a game share link.':
+    '已找到騰訊圍棋使用者，但目前無法取得其對局列表。可切換到「棋譜分享連結」匯入單局。',
   Server: '平台',
   'Search by': '查詢方式',
   Nickname: '暱稱',
@@ -74,6 +92,8 @@ const traditional = {
   'User not found. Check the nickname or try a player ID.':
     '未找到使用者，請核對完整暱稱或改用使用者 ID。',
   'Fox player IDs must contain digits only.': '野狐使用者 ID 只能包含數字。',
+  'Tencent player IDs must contain digits only.':
+    '騰訊圍棋使用者 ID 只能包含數字。',
   'The server could not load the games. Please try again.':
     '平台暫時無法取得棋譜，請重試。',
   'The server returned an invalid response.':

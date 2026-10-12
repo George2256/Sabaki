@@ -101,6 +101,8 @@
       "node_modules/@sabaki/shudan/css/*",
       "node_modules/@sabaki/go-board/**/*",
       "node_modules/@sabaki/i18n/**/*",
+      "node_modules/@sabaki/sgf/**/*",
+      "node_modules/doken/**/*",
       "node_modules/dolm/**/*",
       "node_modules/argv-split/**/*",
       "node_modules/{iconv-lite,safer-buffer}/**/*",

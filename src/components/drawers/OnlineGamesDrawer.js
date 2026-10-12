@@ -24,6 +24,7 @@ export default class OnlineGamesDrawer extends Component {
       busy: false,
       downloading: null,
       error: '',
+      notice: '',
       searched: false,
     }
     this.generation = 0
@@ -70,6 +71,7 @@ export default class OnlineGamesDrawer extends Component {
     this.setState({
       busy: true,
       error: '',
+      notice: '',
       games: [],
       user: null,
       searched: false,
@@ -125,10 +127,15 @@ export default class OnlineGamesDrawer extends Component {
       busy,
       downloading,
       error,
+      notice,
       searched,
     },
   ) {
     const disabled = busy || downloading != null
+    const modes = providers.find((source) => source.id === provider)?.modes ?? [
+      'nickname',
+      'id',
+    ]
     return h(
       Drawer,
       {type: 'onlinegames', show},
@@ -145,10 +152,12 @@ export default class OnlineGamesDrawer extends Component {
             onChange: (event) =>
               this.setState({
                 provider: event.currentTarget.value,
+                mode: 'nickname',
                 games: [],
                 user: null,
                 searched: false,
                 error: '',
+                notice: '',
               }),
           },
           providers.map((source) =>
@@ -164,17 +173,34 @@ export default class OnlineGamesDrawer extends Component {
             onChange: (event) =>
               this.setState({mode: event.currentTarget.value}),
           },
-          h('option', {value: 'nickname'}, t('Nickname')),
-          h('option', {value: 'id'}, t('Player ID')),
+          modes.map((value) =>
+            h(
+              'option',
+              {value},
+              t(
+                {
+                  nickname: 'Nickname',
+                  id: 'Player ID',
+                  link: 'Game share link',
+                }[value],
+              ),
+            ),
+          ),
         ),
         h('input', {
           ref: (element) => (this.input = element),
           type: 'text',
           value: keyword,
-          maxLength: 100,
-          'aria-label': t('Player ID or nickname'),
+          maxLength: mode === 'link' ? 2000 : 100,
+          'aria-label': t(
+            mode === 'link' ? 'Game share link' : 'Player ID or nickname',
+          ),
           placeholder:
-            mode === 'id' ? t('Enter player ID') : t('Enter exact nickname'),
+            mode === 'link'
+              ? t('Paste a Tencent game share link')
+              : mode === 'id'
+                ? t('Enter player ID')
+                : t('Enter exact nickname'),
           disabled,
           onInput: (event) =>
             this.setState({keyword: event.currentTarget.value}),
@@ -189,10 +215,11 @@ export default class OnlineGamesDrawer extends Component {
         'p',
         {class: 'online-status', role: 'status'},
         user
-          ? `${user.name} · ID ${user.id} · ${games.length} ${t('games')}`
+          ? `${user.name} · ID ${user.id}${notice ? '' : ` · ${games.length} ${t('games')}`}`
           : t('Find recent games by player ID or exact nickname.'),
       ),
       error && h('p', {class: 'online-error', role: 'alert'}, t(error)),
+      notice && h('p', {class: 'online-error', role: 'alert'}, t(notice)),
       h(
         'div',
         {class: 'online-results', 'aria-busy': disabled},
@@ -241,9 +268,11 @@ export default class OnlineGamesDrawer extends Component {
               {class: 'online-empty'},
               busy
                 ? t('Searching…')
-                : searched
-                  ? t('No recent games found for this player.')
-                  : t('Game records will appear here.'),
+                : notice
+                  ? t('Game records could not be loaded.')
+                  : searched
+                    ? t('No recent games found for this player.')
+                    : t('Game records will appear here.'),
             ),
       ),
       h(

@@ -1,0 +1,43 @@
+{
+  "result": 0,
+  "ret": 0,
+  "type": 7,
+  "chesslist": [
+    {
+      "chessid": "1791815734932291925",
+      "blackuid": 35938987,
+      "blacknick": "George2256",
+      "whiteuid": 1,
+      "whitenick": "围棋精灵",
+      "starttime": "2026-10-12 21:47:10",
+      "winner": 1,
+      "point": 0,
+      "reason": 3,
+      "movenum": 149
+    },
+    {
+      "chessid": "1791767832932291407",
+      "blackuid": 35938987,
+      "blacknick": "George2256",
+      "whiteuid": 1,
+      "whitenick": "围棋精灵",
+      "starttime": "2026-10-12 09:05:29",
+      "winner": 2,
+      "point": 0,
+      "reason": 3,
+      "movenum": 128
+    },
+    {
+      "chessid": "1791745150932292169",
+      "blackuid": 1,
+      "blacknick": "围棋精灵",
+      "whiteuid": 35938987,
+      "whitenick": "George2256",
+      "starttime": "2026-10-12 02:31:38",
+      "winner": 1,
+      "point": 1475,
+      "reason": 1,
+      "movenum": 267
+    }
+  ]
+}
