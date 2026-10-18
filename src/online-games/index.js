@@ -1,14 +1,19 @@
 const fox = require('./fox')
 const tencent = require('./tencent')
+const ogs = require('./ogs')
 
 // Providers own network endpoints and normalization; the renderer sees only
 // serializable player/game summaries and SGF content, never arbitrary URLs.
 function createService({
-  providers = [fox, tencent],
+  providers = [fox, tencent, ogs],
   fetchImpl = (...args) => fetch(...args),
 } = {}) {
   const registry = new Map(providers.map((provider) => [provider.id, provider]))
-  async function request(endpoint, params) {
+  async function request(
+    endpoint,
+    params = {},
+    {format = 'json', errors = {}} = {},
+  ) {
     const url = new URL(endpoint)
     Object.entries(params).forEach(([key, value]) =>
       url.searchParams.set(key, value),
@@ -23,7 +28,13 @@ function createService({
         },
       })
       if (!response.ok)
-        throw new Error('The server is unavailable. Please try again later.')
+        throw new Error(
+          errors[response.status] ||
+            (response.status === 429
+              ? 'Too many requests. Please try again later.'
+              : 'The server is unavailable. Please try again later.'),
+        )
+      if (format === 'text') return await response.text()
       const json = await response.json()
       if (!json || typeof json !== 'object' || Array.isArray(json))
         throw new Error('The server returned an invalid response.')

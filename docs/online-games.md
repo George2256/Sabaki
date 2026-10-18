@@ -6,10 +6,11 @@ numeric nicknames are not mistaken for IDs. Open a result to download and load
 the game; use the existing Save / Save As commands to keep an SGF copy. The
 normal unsaved-changes prompt protects the current game.
 
-The selector includes **Fox Go** and **Tencent Go** (简体中文：**腾讯围棋**).
-Tencent is the platform at [txwq.qq.com](https://txwq.qq.com/) and uses its own
-account and record endpoints. It is not a Fox alias: `George2256` / `35938987`
-is a verified Tencent account absent from Fox's nickname lookup.
+The selector includes **Fox Go**, **Tencent Go** (简体中文：**腾讯围棋**) and
+**OGS (Online-Go.com)**. Tencent is the platform at
+[txwq.qq.com](https://txwq.qq.com/) and uses its own account and record
+endpoints. It is not a Fox alias: `George2256` / `35938987` is a verified
+Tencent account absent from Fox's nickname lookup.
 
 Tencent nickname and ID searches resolve the player through its personal-info
 endpoint, then request the player's recent records through `TXWQFetchChessList`
@@ -42,6 +43,46 @@ provider and Electron import: George2256 (Black) vs. 围棋精灵 (White),
 points by the existing SGF importer. `test/sgf/tencent-ai-game.sgf` retains the
 original response as a regression fixture. The share title/description is not
 used to determine the players; those values come from the actual SGF.
+
+## OGS
+
+Select **OGS (Online-Go.com)** to find public game records by exact,
+case-sensitive username or a positive numeric player ID. OGS usernames and IDs
+are distinct search modes, including when a username contains only digits. No
+login is required for these public records. Private or unavailable games show an
+explicit error; Sabaki does not request account credentials.
+
+The adapter uses OGS's [official REST API](https://docs.online-go.com/):
+
+- `/api/v1/players/?username=…` resolves an exact username;
+  `/api/v1/players/{id}/` verifies an ID.
+- `/api/v1/players/{id}/games/` requests finished games with
+  `ended__isnull=false`, `ordering=-ended`, and `page_size=20`. **Load more**
+  appends earlier games without duplicates. A failed page keeps the loaded
+  records and can be retried. Changing the query clears pagination.
+- **Game share link** accepts `https://online-go.com/game/{id}` and official
+  `/api/v1/games/{id}/sgf` links. Only the ID is extracted; metadata is fetched
+  from the fixed `/api/v1/games/{id}/` endpoint.
+- Opening a game downloads SGF text from `/api/v1/games/{id}/sgf`, validates it,
+  and uses the normal import/save flow. Comments, variations, names, komi, board
+  size and moves are preserved.
+
+OGS's list response omits move counts, displayed as **—**. Link lookup can
+display the count from game details. List searches do not download individual
+SGFs. Historical names in game details or SGF may differ from current usernames
+in the player list. Resignations, timeouts and scored wins are displayed using
+`B/W+R`, `B/W+T` and `B/W+points`.
+
+Pagination follows OGS's verified page-number contract. Only a validated page
+number crosses IPC; neither the renderer nor the API's `next` field can select
+an arbitrary request URL. Each request retains the shared 15-second timeout;
+rate limits ask the user to retry later.
+
+Live username/ID searches, a second page, game-link lookup and SGF download were
+verified on 2026-10-18. `test/resources/ogs-player-list.json` retains two
+records from a public response with unrelated profile/rating fields omitted.
+`test/sgf/ogs-game.sgf` retains game `88868859`: 한지석 vs. anoek, 9×9, 23
+moves, komi 6.5, `W+R`.
 
 The panel follows Sabaki's language setting, with English, Simplified Chinese
 and Traditional Chinese strings. New strings are maintained in
@@ -76,16 +117,16 @@ errors. The selector obtains its choices from the registry. Authentication, if
 required by a future platform, belongs in the main process and needs its own
 explicit account setup flow. Do not expose credentials to the renderer.
 
-The current UI displays one recent-games snapshot. `nextCursor` is reserved for
-future pagination; add a load-more UI when integrating a provider with a
-verified paging contract. Fox currently returns `null`; this feature does not
-claim to retrieve a player's complete historical archive.
+Providers return `nextCursor` when more records are available. The UI appends
+pages through **Load more**, preserves existing results on a failed page, and
+discards pending work when closed. OGS returns validated page numbers; Fox and
+Tencent currently return `null` and expose one recent-games snapshot.
 
 ## Fox compatibility and validation
 
 The public endpoints and field aliases are adapted from the local GoAgent
-project (`src/main/services/fox.ts`). Requests time out after 15 seconds.
-Searches do not download every SGF; records download only when opened. Closing
+project (`src/main/services/fox.ts`). Requests time out after 15 seconds. Player
+searches do not download every SGF; records download only when opened. Closing
 the panel invalidates pending UI work so a late download cannot replace the
 board.
 
@@ -101,6 +142,7 @@ rejected the unconverted `komi 550`.
 
 Run `npm test`, `npm run bundle`, then
 `npx playwright test --project=online-games`. Unit tests use deterministic
-responses. Electron tests cover loading, empty/error states, Chinese
-localization, stale downloads and canceled save prompts. Live service
-availability and server retention are outside these deterministic tests.
+responses. Electron tests cover loading, empty/error states, OGS search/link
+imports and pagination retries, Chinese localization, stale downloads and
+canceled save prompts. Live service availability and server retention are
+outside these deterministic tests.

@@ -26,6 +26,8 @@ export default class OnlineGamesDrawer extends Component {
       error: '',
       notice: '',
       searched: false,
+      nextCursor: null,
+      query: null,
     }
     this.generation = 0
   }
@@ -63,25 +65,55 @@ export default class OnlineGamesDrawer extends Component {
     }
   }
 
-  async search(event) {
+  async search(event, more = false) {
     event.preventDefault()
     if (this.state.busy || this.state.downloading || !this.state.keyword.trim())
       return
+    if (more && (!this.state.nextCursor || !this.state.query)) return
     const generation = ++this.generation
+    const query = more
+      ? this.state.query
+      : {
+          provider: this.state.provider,
+          keyword: this.state.keyword.trim(),
+          mode: this.state.mode,
+        }
     this.setState({
       busy: true,
       error: '',
       notice: '',
-      games: [],
-      user: null,
-      searched: false,
+      ...(!more && {
+        games: [],
+        user: null,
+        searched: false,
+        nextCursor: null,
+        query: null,
+      }),
     })
     try {
-      const {provider, keyword, mode} = this.state
-      const response = await api().search({provider, keyword, mode})
+      const response = await api().search({
+        ...query,
+        ...(more && {cursor: this.state.nextCursor}),
+      })
       if (generation !== this.generation) return
       if (!response.ok) throw new Error(response.error)
-      this.setState({...response.data, searched: true})
+      const games = more
+        ? [
+            ...new Map(
+              [...this.state.games, ...response.data.games].map((game) => [
+                game.id,
+                game,
+              ]),
+            ).values(),
+          ]
+        : response.data.games
+      this.setState({
+        ...response.data,
+        games,
+        nextCursor: response.data.nextCursor ?? null,
+        query,
+        searched: true,
+      })
     } catch (error) {
       if (generation === this.generation)
         this.setState({
@@ -129,6 +161,7 @@ export default class OnlineGamesDrawer extends Component {
       error,
       notice,
       searched,
+      nextCursor,
     },
   ) {
     const disabled = busy || downloading != null
@@ -158,6 +191,8 @@ export default class OnlineGamesDrawer extends Component {
                 searched: false,
                 error: '',
                 notice: '',
+                nextCursor: null,
+                query: null,
               }),
           },
           providers.map((source) =>
@@ -171,7 +206,16 @@ export default class OnlineGamesDrawer extends Component {
             'aria-label': t('Search by'),
             disabled,
             onChange: (event) =>
-              this.setState({mode: event.currentTarget.value}),
+              this.setState({
+                mode: event.currentTarget.value,
+                games: [],
+                user: null,
+                searched: false,
+                error: '',
+                notice: '',
+                nextCursor: null,
+                query: null,
+              }),
           },
           modes.map((value) =>
             h(
@@ -197,13 +241,20 @@ export default class OnlineGamesDrawer extends Component {
           ),
           placeholder:
             mode === 'link'
-              ? t('Paste a Tencent game share link')
+              ? t(
+                  provider === 'ogs'
+                    ? 'Paste an OGS game link'
+                    : 'Paste a Tencent game share link',
+                )
               : mode === 'id'
                 ? t('Enter player ID')
                 : t('Enter exact nickname'),
           disabled,
           onInput: (event) =>
-            this.setState({keyword: event.currentTarget.value}),
+            this.setState({
+              keyword: event.currentTarget.value,
+              nextCursor: null,
+            }),
         }),
         h(
           'button',
@@ -216,7 +267,11 @@ export default class OnlineGamesDrawer extends Component {
         {class: 'online-status', role: 'status'},
         user
           ? `${user.name} · ID ${user.id}${notice ? '' : ` · ${games.length} ${t('games')}`}`
-          : t('Find recent games by player ID or exact nickname.'),
+          : t(
+              mode === 'link'
+                ? 'Find a game by its share link.'
+                : 'Find recent games by player ID or exact nickname.',
+            ),
       ),
       error && h('p', {class: 'online-error', role: 'alert'}, t(error)),
       notice && h('p', {class: 'online-error', role: 'alert'}, t(notice)),
@@ -274,6 +329,16 @@ export default class OnlineGamesDrawer extends Component {
                     ? t('No recent games found for this player.')
                     : t('Game records will appear here.'),
             ),
+        nextCursor &&
+          h(
+            'div',
+            {class: 'online-pagination'},
+            h(
+              'button',
+              {disabled, onClick: (event) => this.search(event, true)},
+              busy ? t('Loading…') : t('Load more'),
+            ),
+          ),
       ),
       h(
         'div',

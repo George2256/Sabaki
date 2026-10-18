@@ -1,0 +1,49 @@
+{
+  "count": 580,
+  "next": "https://online-go.com/api/v1/players/1/games/?ended__isnull=false&ordering=-ended&page=2&page_size=20",
+  "previous": null,
+  "results": [
+    {
+      "id": 88868859,
+      "players": {
+        "black": {
+          "id": 2006904,
+          "username": "Chaerogo"
+        },
+        "white": {
+          "id": 1,
+          "username": "anoek"
+        }
+      },
+      "black": 2006904,
+      "white": 1,
+      "started": "2026-07-18T02:24:55.786647Z",
+      "ended": "2026-07-29T10:09:45.695573Z",
+      "outcome": "Resignation",
+      "black_lost": true,
+      "white_lost": false,
+      "annulled": false
+    },
+    {
+      "id": 85305864,
+      "players": {
+        "black": {
+          "id": 1250228,
+          "username": "Xuan Tian"
+        },
+        "white": {
+          "id": 1,
+          "username": "anoek"
+        }
+      },
+      "black": 1250228,
+      "white": 1,
+      "started": "2026-03-22T03:19:58.598301Z",
+      "ended": "2026-06-15T10:10:35.653823Z",
+      "outcome": "12.5 points",
+      "black_lost": false,
+      "white_lost": true,
+      "annulled": false
+    }
+  ]
+}

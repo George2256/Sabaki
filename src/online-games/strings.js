@@ -107,6 +107,40 @@ const traditional = {
   'Enter a valid player ID or nickname.': '請輸入有效的使用者 ID 或暱稱。',
 }
 for (const [key, hans, hant] of [
+  ['OGS (Online-Go.com)', 'OGS（Online-Go.com）', 'OGS（Online-Go.com）'],
+  ['Paste an OGS game link', '粘贴 OGS 对局链接', '貼上 OGS 對局連結'],
+  [
+    'Enter a valid OGS game link.',
+    '请输入有效的 OGS 对局链接。',
+    '請輸入有效的 OGS 對局連結。',
+  ],
+  [
+    'Find a game by its share link.',
+    '通过分享链接查询棋谱。',
+    '透過分享連結查詢棋譜。',
+  ],
+  ['Load more', '加载更多', '載入更多'],
+  ['Loading…', '加载中…', '載入中…'],
+  [
+    'Invalid game history page.',
+    '无效的棋谱页码，请重新查询。',
+    '無效的棋譜頁碼，請重新查詢。',
+  ],
+  [
+    'OGS player IDs must contain digits only and be greater than zero.',
+    'OGS 用户 ID 必须为大于零的整数。',
+    'OGS 使用者 ID 必須為大於零的整數。',
+  ],
+  [
+    'This OGS game is private or unavailable.',
+    '该 OGS 棋谱为私密棋谱或暂时无法访问。',
+    '該 OGS 棋譜為私人棋譜或暫時無法存取。',
+  ],
+  [
+    'Too many requests. Please try again later.',
+    '请求过于频繁，请稍后重试。',
+    '請求過於頻繁，請稍後重試。',
+  ],
   ['Unknown game server.', '未知的围棋平台。', '未知的圍棋平台。'],
   ['Invalid search mode.', '无效的查询方式。', '無效的查詢方式。'],
   [

@@ -45,6 +45,11 @@ describe('online game providers', () => {
     assert.deepEqual(service.list(), [
       {id: 'fox', name: 'Fox Go'},
       {id: 'tencent', name: 'Tencent Go', modes: ['nickname', 'id', 'link']},
+      {
+        id: 'ogs',
+        name: 'OGS (Online-Go.com)',
+        modes: ['nickname', 'id', 'link'],
+      },
     ])
     const data = await service.search({
       provider: 'tencent',

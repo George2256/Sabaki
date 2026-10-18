@@ -1510,6 +1510,7 @@ header {
 #onlinegames td { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #onlinegames tbody tr:hover { background: rgba(255, 255, 255, .04); }
 #onlinegames .online-empty { padding: 32px 12px; text-align: center; opacity: .6; }
+#onlinegames .online-pagination { padding: 12px; text-align: center; }
 #onlinegames .online-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 #onlinegames button:disabled { opacity: .45; cursor: default; }
 @media (max-width: 650px) {

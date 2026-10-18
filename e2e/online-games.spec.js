@@ -13,6 +13,208 @@ const tencentList = JSON.parse(
     'utf8',
   ),
 )
+const ogsGame = readFileSync(
+  path.resolve(__dirname, '../test/sgf/ogs-game.sgf'),
+  'utf8',
+)
+const ogsList = JSON.parse(
+  readFileSync(
+    path.resolve(__dirname, '../test/resources/ogs-player-list.json'),
+    'utf8',
+  ),
+)
+
+async function prepareOgs(electronApp, page) {
+  // Exercise the real IPC service and OGS adapter, replacing only HTTP responses.
+  await electronApp.evaluate(
+    (_, {list, content}) => {
+      global.__ogsRequests = []
+      global.fetch = async (url) => {
+        const endpoint = new URL(url)
+        global.__ogsRequests.push(String(url))
+        if (endpoint.hostname !== 'online-go.com')
+          throw new Error('Unexpected server')
+        let data
+        let status = 200
+        if (endpoint.pathname === '/api/v1/players/') {
+          data = {
+            results:
+              endpoint.searchParams.get('username') === 'anoek'
+                ? [{id: 1, username: 'anoek'}]
+                : [],
+          }
+        } else if (endpoint.pathname === '/api/v1/players/1/') {
+          data = {id: 1, username: 'anoek'}
+        } else if (endpoint.pathname === '/api/v1/players/1/games/') {
+          if (endpoint.searchParams.get('page') === '2') {
+            if (global.__ogsFailPage) {
+              global.__ogsFailPage = false
+              status = 503
+            }
+            data = {
+              ...list,
+              next: null,
+              results: [
+                list.results[0],
+                {
+                  ...list.results[1],
+                  id: 3,
+                  players: {
+                    black: {username: 'Next page'},
+                    white: {username: 'anoek'},
+                  },
+                },
+              ],
+            }
+          } else data = list
+        } else if (endpoint.pathname === '/api/v1/games/88868859/') {
+          data = {
+            ...list.results[0],
+            gamedata: {
+              players: {
+                black: {username: '한지석'},
+                white: {username: 'anoek'},
+              },
+              moves: Array(23).fill([0, 0]),
+            },
+          }
+        } else if (endpoint.pathname === '/api/v1/games/88868859/sgf') {
+          data = content
+        } else if (endpoint.pathname === '/api/v1/games/404/') {
+          status = 403
+        } else throw new Error(`Unexpected request: ${endpoint}`)
+        return {
+          ok: status === 200,
+          status,
+          json: async () => data,
+          text: async () => data,
+        }
+      }
+    },
+    {list: ogsList, content: ogsGame},
+  )
+  await page.evaluate(() => window.__sabaki.openDrawer('onlinegames'))
+  await expect(page.locator('#onlinegames select').first()).toHaveValue('fox')
+  await page.locator('#onlinegames select').first().selectOption('ogs')
+}
+
+test('OGS nickname and ID searches paginate, retry errors and import SGF through the real adapter', async ({
+  electronApp,
+  page,
+}) => {
+  await prepareOgs(electronApp, page)
+  for (const [mode, keyword] of [
+    ['nickname', 'anoek'],
+    ['id', '1'],
+  ]) {
+    await page.locator('#onlinegames select').nth(1).selectOption(mode)
+    await page.locator('#onlinegames input').fill(keyword)
+    await page.locator('#onlinegames button[type=submit]').click()
+    await expect(page.locator('#onlinegames tbody tr')).toHaveCount(2)
+    await expect(page.locator('#onlinegames .online-status')).toContainText(
+      'anoek · ID 1 · 2 games',
+    )
+    await expect(page.locator('#onlinegames tbody tr').first()).toContainText(
+      'W+R',
+    )
+    await expect(page.locator('#onlinegames [role=alert]')).toHaveCount(0)
+  }
+  await electronApp.evaluate(() => {
+    global.__ogsFailPage = true
+  })
+  await page.getByRole('button', {name: 'Load more', exact: true}).click()
+  await expect(page.locator('#onlinegames [role=alert]')).toContainText(
+    'unavailable',
+  )
+  await expect(page.locator('#onlinegames tbody tr')).toHaveCount(2)
+  await page.getByRole('button', {name: 'Load more', exact: true}).click()
+  await expect(page.locator('#onlinegames tbody tr')).toHaveCount(3)
+  await expect(page.locator('#onlinegames tbody')).toContainText('Next page')
+  await expect(page.locator('#onlinegames [role=alert]')).toHaveCount(0)
+  await expect(page.locator('#onlinegames .online-pagination')).toHaveCount(0)
+  await page.screenshot({path: 'test-results/online-games-ogs.png'})
+  await page.locator('#onlinegames tbody button').first().click()
+  await expect(page.locator('#onlinegames')).not.toHaveClass(/show/)
+  const imported = await page.evaluate(() => {
+    const tree = window.__sabaki.state.gameTrees[0]
+    return {
+      black: tree.root.data.PB[0],
+      white: tree.root.data.PW[0],
+      size: tree.root.data.SZ[0],
+      komi: tree.root.data.KM[0],
+      result: tree.root.data.RE[0],
+      moves: tree.getHeight() - 1,
+    }
+  })
+  expect(imported).toEqual({
+    black: '한지석',
+    white: 'anoek',
+    size: '9',
+    komi: '6.5',
+    result: 'W+R',
+    moves: 23,
+  })
+  const requests = await electronApp.evaluate(() => global.__ogsRequests)
+  expect(requests.filter((url) => url.includes('/sgf'))).toHaveLength(1)
+  expect(
+    requests.filter((url) => new URL(url).searchParams.get('page') === '2'),
+  ).toHaveLength(2)
+})
+
+test('OGS links show historical names and move counts, and provider changes clear pagination', async ({
+  electronApp,
+  page,
+}) => {
+  await prepareOgs(electronApp, page)
+  await page.locator('#onlinegames input').fill('anoek')
+  await page.locator('#onlinegames button[type=submit]').click()
+  await expect(page.locator('#onlinegames .online-pagination')).toHaveCount(1)
+  await page.locator('#onlinegames select').nth(1).selectOption('link')
+  await expect(page.locator('#onlinegames input')).toHaveAttribute(
+    'placeholder',
+    'Paste an OGS game link',
+  )
+  await expect(page.locator('#onlinegames .online-pagination')).toHaveCount(0)
+  await expect(page.locator('#onlinegames tbody tr')).toHaveCount(0)
+  await page
+    .locator('#onlinegames input')
+    .fill('https://online-go.com/game/88868859')
+  await page.locator('#onlinegames button[type=submit]').click()
+  await expect(page.locator('#onlinegames tbody tr')).toHaveCount(1)
+  await expect(page.locator('#onlinegames tbody')).toContainText('한지석')
+  await expect(page.locator('#onlinegames tbody')).toContainText('23')
+  await page.locator('#onlinegames tbody button').click()
+  await expect(page.locator('#onlinegames')).not.toHaveClass(/show/)
+  await page.evaluate(() => window.__sabaki.openDrawer('onlinegames'))
+  await page.locator('#onlinegames select').first().selectOption('tencent')
+  await expect(page.locator('#onlinegames .online-pagination')).toHaveCount(0)
+  await expect(page.locator('#onlinegames tbody tr')).toHaveCount(0)
+  await page.locator('#onlinegames select').nth(1).selectOption('link')
+  await expect(page.locator('#onlinegames input')).toHaveAttribute(
+    'placeholder',
+    'Paste a Tencent game share link',
+  )
+})
+
+test('OGS invalid IDs, missing nicknames and private games show actionable errors', async ({
+  electronApp,
+  page,
+}) => {
+  await prepareOgs(electronApp, page)
+  for (const [mode, keyword, error] of [
+    ['id', 'abc', 'greater than zero'],
+    ['nickname', 'missing', 'User not found'],
+    ['link', 'https://example.com/game/1', 'valid OGS game link'],
+    ['link', 'https://online-go.com/game/404', 'private or unavailable'],
+  ]) {
+    await page.locator('#onlinegames select').nth(1).selectOption(mode)
+    await page.locator('#onlinegames input').fill(keyword)
+    await page.locator('#onlinegames button[type=submit]').click()
+    await expect(page.locator('#onlinegames [role=alert]')).toContainText(error)
+    await expect(page.locator('#onlinegames button[type=submit]')).toBeEnabled()
+  }
+  expect(await electronApp.evaluate(() => global.__ogsRequests.length)).toBe(2)
+})
 
 async function prepare(electronApp, page) {
   await electronApp.evaluate(({ipcMain}) => {
@@ -261,6 +463,16 @@ for (const [language, title, search, timeout] of [
       await expect(
         page.locator('#onlinegames option[value=tencent]'),
       ).toHaveText(language === 'zh-Hans' ? '腾讯围棋' : '騰訊圍棋')
+      await expect(page.locator('#onlinegames option[value=ogs]')).toHaveText(
+        'OGS（Online-Go.com）',
+      )
+      await page.locator('#onlinegames select').first().selectOption('ogs')
+      await page.locator('#onlinegames select').nth(1).selectOption('link')
+      await expect(page.locator('#onlinegames input')).toHaveAttribute(
+        'placeholder',
+        language === 'zh-Hans' ? '粘贴 OGS 对局链接' : '貼上 OGS 對局連結',
+      )
+      await page.locator('#onlinegames select').nth(1).selectOption('nickname')
       await expect(page.locator('#onlinegames button[type=submit]')).toHaveText(
         search,
       )
