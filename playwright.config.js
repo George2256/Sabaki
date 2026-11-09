@@ -9,6 +9,7 @@ module.exports = defineConfig({
   projects: [
     {name: 'bundled-themes', testMatch: /bundled-themes\.spec\.js/},
     {name: 'teaching-review', testMatch: /teaching-review\.spec\.js/},
+    {name: 'match-report', testMatch: /match-report\.spec\.js/},
     {name: 'engine-setup', testMatch: /engine-setup\.spec\.js/},
     {name: 'batch-analysis', testMatch: /batch-analysis\.spec\.js/},
     {name: 'online-games', testMatch: /online-games\.spec\.js/},

@@ -14,6 +14,7 @@ view older versions of the documentation, you can browse by tag on GitHub.
 - [Automatic Engine Setup](automatic-engine.md)
 - [教学讲解：设计与使用](teaching-review.md)
 - [教学讲解实施进度](teaching-review-progress.md)
+- [AI 吻合度检测](ai-match.md)
 - [Markdown in Sabaki](guides/markdown.md)
 - [Textures & Theme Directory](guides/theme-directory.md)
 

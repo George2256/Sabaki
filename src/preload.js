@@ -52,6 +52,16 @@ window.sabaki = {
       return () => ipcRenderer.removeListener('teaching:change', listener)
     },
   },
+  match: {
+    status: () => ipcRenderer.invoke('match:status'),
+    start: (input) => ipcRenderer.invoke('match:start', input),
+    cancel: () => ipcRenderer.invoke('match:cancel'),
+    onChange: (callback) => {
+      const listener = (_, state) => callback(state)
+      ipcRenderer.on('match:change', listener)
+      return () => ipcRenderer.removeListener('match:change', listener)
+    },
+  },
   engineSetup: {
     status: () => ipcRenderer.invoke('engineSetup:status'),
     install: () => ipcRenderer.invoke('engineSetup:install'),

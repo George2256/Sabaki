@@ -25,6 +25,8 @@ import {
   fingerprint as teachingFingerprint,
 } from '../teaching/position.js'
 import {scanGraph, graphForNodes} from '../teaching/graph.js'
+import {matchGraph} from '../match/stats.js'
+import {t as matchText} from '../match/strings.js'
 
 deadstones.useFetch('./node_modules/@sabaki/deadstones/wasm/deadstones_bg.wasm')
 
@@ -101,10 +103,14 @@ class Sabaki extends EventEmitter {
       showCommentBox: setting.get('view.show_comments'),
       sidebarWidth: setting.get('view.sidebar_width'),
       showTeachingReview: false,
+      showMatchReport: false,
       sidebarTab: 'record',
       teachingReview: null,
       teachingPosition: null,
       teachingGraphActive: false,
+      matchGraphActive: false,
+      matchReview: null,
+      matchPosition: null,
       graphGridSize: null,
       graphNodeSize: null,
 
@@ -214,13 +220,21 @@ class Sabaki extends EventEmitter {
         teachingReview: {...review, stale: !!this.state.teachingReview?.stale},
       })
     })
+    window.sabaki.match.onChange((review) => {
+      if (review.fingerprint !== this.matchFingerprint) return
+      this.setState({
+        matchReview: {...review, stale: !!this.state.matchReview?.stale},
+      })
+    })
     this.on('change', ({change}) => {
       if (
         change.gameTrees ||
         change.gameIndex != null ||
         change.treePosition != null
-      )
+      ) {
         this.checkTeachingReview()
+        this.checkMatchReview()
+      }
     })
   }
 
@@ -292,6 +306,7 @@ class Sabaki extends EventEmitter {
           state.showGameGraph ||
           state.showCommentBox ||
           state.showTeachingReview ||
+          state.showMatchReport ||
           (state.showWinrateGraph && this.teachingGraph != null)
         )
       },
@@ -318,13 +333,30 @@ class Sabaki extends EventEmitter {
           (syncer) => syncer.id === state.analyzingEngineSyncerId,
         )
       },
+      // The scan curve shown in the winrate graph: either the teaching scan or
+      // the AI match scan, whichever was started last.
       get teachingGraph() {
-        if (!state.teachingGraphActive) return null
-        return graphForNodes(state.teachingPosition, state.teachingReview, [
-          ...this.gameTree.listCurrentNodes(
-            state.gameCurrents[state.gameIndex],
-          ),
-        ])
+        const match = state.matchGraphActive
+        if (!match && !state.teachingGraphActive) return null
+        const review = match ? state.matchReview : state.teachingReview
+        const graph = graphForNodes(
+          match ? state.matchPosition : state.teachingPosition,
+          review,
+          [
+            ...this.gameTree.listCurrentNodes(
+              state.gameCurrents[state.gameIndex],
+            ),
+          ],
+        )
+        return (
+          graph && {
+            ...graph,
+            phase: review.phase,
+            label: match
+              ? matchText(setting.get('app.lang'), 'graphSource')
+              : null,
+          }
+        )
       },
       get winrateData() {
         const graph = this.teachingGraph
@@ -435,6 +467,7 @@ class Sabaki extends EventEmitter {
     })
     try {
       await this.stopBatchAnalysis()
+      await this.stopMatchReview()
       const syncer = this.inferredState.analyzingEngineSyncer
       this.stopAnalysis()
       if (syncer) await engineOperation(syncer, syncer.sendAbort())
@@ -451,6 +484,7 @@ class Sabaki extends EventEmitter {
       this.setState({
         teachingPosition: position,
         teachingGraphActive: true,
+        matchGraphActive: false,
         showWinrateGraph: true,
         teachingReview: {
           phase: 'preparing',
@@ -493,6 +527,133 @@ class Sabaki extends EventEmitter {
     if (this.state.teachingReview?.running)
       await window.sabaki.teaching.cancel()
     if (this.teachingStarting) await this.teachingStartDone
+  }
+
+  // Teaching review and the AI match check both run a private KataGo process;
+  // other engine work waits for them instead of competing for the GPU.
+  get scanJobBusy() {
+    return !!(
+      this.teachingStarting ||
+      this.state.teachingReview?.running ||
+      this.matchStarting ||
+      this.state.matchReview?.running
+    )
+  }
+
+  openMatchReport() {
+    if (this.state.mode === 'edit') this.setMode('play')
+    this.setState({showMatchReport: true, sidebarTab: 'match'})
+  }
+
+  async closeMatchReport() {
+    await this.stopMatchReview()
+    this.setState((state) => ({
+      showMatchReport: false,
+      sidebarTab:
+        state.sidebarTab !== 'match'
+          ? state.sidebarTab
+          : state.showTeachingReview
+            ? 'teaching'
+            : 'record',
+    }))
+  }
+
+  matchSnapshot(rules) {
+    const tree = this.inferredState.gameTree
+    const currents = this.state.gameCurrents[this.state.gameIndex]
+    const position = teachingSnapshot(tree, currents, rules)
+    // A match check needs rules but should not block on SGFs that omit them.
+    return position.rules
+      ? position
+      : {...teachingSnapshot(tree, currents, 'chinese'), rulesFallback: true}
+  }
+
+  checkMatchReview() {
+    if (!this.state.matchPosition || this.state.matchReview?.stale) return
+    let current
+    try {
+      current = this.matchSnapshot(this.matchRulesOverride)
+    } catch {}
+    if (!current || teachingFingerprint(current) !== this.matchFingerprint) {
+      this.setState({matchReview: {...this.state.matchReview, stale: true}})
+      this.stopMatchReview()
+    }
+  }
+
+  async startMatchReview({
+    engineIndex,
+    rules = '',
+    budget = 'standard',
+    ranks = {B: null, W: null},
+    margin = 3,
+  } = {}) {
+    if (this.matchStarting || this.state.matchReview?.running) return
+    if (this.state.engineGameOngoing != null) throw new Error('engine-game')
+    if (this.generatingMoveCount > 0) throw new Error('engine-busy')
+    this.matchStarting = true
+    this.matchStartCanceled = false
+    this.matchStartDone = new Promise((resolve) => {
+      this.finishMatchStart = resolve
+    })
+    try {
+      await this.stopBatchAnalysis()
+      await this.stopTeachingReview()
+      const syncer = this.inferredState.analyzingEngineSyncer
+      this.stopAnalysis()
+      if (syncer) await engineOperation(syncer, syncer.sendAbort())
+      if (this.matchStartCanceled) return
+      if (this.state.attachedEngineSyncers.some((s) => s.busy))
+        throw new Error('engine-busy')
+      const position = this.matchSnapshot(rules)
+      this.matchRulesOverride = rules
+      this.matchFingerprint = teachingFingerprint(position)
+      const total = position.moves.length + 1
+      this.setState({
+        matchPosition: position,
+        matchGraphActive: true,
+        teachingGraphActive: false,
+        showWinrateGraph: true,
+        matchReview: {
+          phase: 'preparing',
+          running: true,
+          stale: false,
+          rootId: position.rootId,
+          completed: 0,
+          total,
+          results: Array(total).fill(null),
+          graph: matchGraph(Array(total).fill(null)),
+        },
+      })
+      const response = await window.sabaki.match.start({
+        position,
+        engineIndex,
+        budget,
+        ranks,
+        margin,
+      })
+      if (!response.ok) {
+        this.setState({
+          matchReview: {
+            phase: 'failed',
+            running: false,
+            results: [],
+            error: response.error,
+          },
+        })
+        throw new Error(response.error)
+      }
+      if (this.matchStartCanceled) await window.sabaki.match.cancel()
+      this.checkMatchReview()
+    } finally {
+      this.matchStarting = false
+      this.finishMatchStart()
+    }
+  }
+
+  async stopMatchReview() {
+    if (this.matchStarting) this.matchStartCanceled = true
+    if (this.state.matchReview?.running) await window.sabaki.match.cancel()
+    if (this.matchStarting) await this.matchStartDone
   }
 
   setMode(mode) {
@@ -2000,7 +2161,7 @@ class Sabaki extends EventEmitter {
 
   async analyzeGame() {
     if (this.batchAnalysisJob) return this.stopBatchAnalysis()
-    if (this.teachingStarting || this.state.teachingReview?.running) return
+    if (this.scanJobBusy) return
     if (this.state.engineGameOngoing != null) {
       await dialog.showMessageBox(
         i18n.t('EngineSetup', 'Stop the engine game before analyzing.'),
@@ -2328,6 +2489,7 @@ class Sabaki extends EventEmitter {
 
   async generateEngineMove(syncerId, treePosition, {commit = () => true} = {}) {
     await this.stopTeachingReview()
+    await this.stopMatchReview()
     await this.stopBatchAnalysis()
     let t = i18n.context('sabaki.engine')
     let sign = this.getPlayer(treePosition)
@@ -2339,7 +2501,7 @@ class Sabaki extends EventEmitter {
 
     let synced = await this.syncEngine(syncerId, treePosition)
     if (!synced) return
-    this.setState({teachingGraphActive: false})
+    this.setState({teachingGraphActive: false, matchGraphActive: false})
 
     let {gameTree: tree, board} = this.inferredState
     let coord
@@ -2450,6 +2612,7 @@ class Sabaki extends EventEmitter {
 
   async startEngineGame(treePosition) {
     await this.stopTeachingReview()
+    await this.stopMatchReview()
     await this.stopBatchAnalysis()
     let t = i18n.context('sabaki.engine')
     let {engineGameOngoing, attachedEngineSyncers} = this.state
@@ -2466,6 +2629,7 @@ class Sabaki extends EventEmitter {
     } else {
       this.setState((state) => ({
         teachingGraphActive: false,
+        matchGraphActive: false,
         blackEngineSyncerId:
           state.blackEngineSyncerId == null
             ? state.attachedEngineSyncers[0].id
@@ -2535,12 +2699,7 @@ class Sabaki extends EventEmitter {
   }
 
   async analyzeMove(treePosition) {
-    if (
-      this.batchAnalysisJob ||
-      this.state.teachingReview?.running ||
-      this.teachingStarting
-    )
-      return
+    if (this.batchAnalysisJob || this.scanJobBusy) return
     let sign = this.getPlayer(treePosition)
     let color = sign > 0 ? 'B' : 'W'
     let syncer = this.inferredState.analyzingEngineSyncer
@@ -2571,6 +2730,7 @@ class Sabaki extends EventEmitter {
 
   async startAnalysis(syncerId) {
     await this.stopTeachingReview()
+    await this.stopMatchReview()
     await this.stopBatchAnalysis()
     if (this.state.analyzingEngineSyncerId === syncerId) return
 
@@ -2597,6 +2757,7 @@ class Sabaki extends EventEmitter {
     this.setState({
       analyzingEngineSyncerId: syncerId,
       teachingGraphActive: false,
+      matchGraphActive: false,
     })
 
     if (
@@ -2625,7 +2786,7 @@ class Sabaki extends EventEmitter {
   }
 
   async startBatchAnalysis() {
-    if (this.teachingStarting || this.state.teachingReview?.running) return
+    if (this.scanJobBusy) return
     if (this.batchAnalysisJob) return
     const t = i18n.context('BatchAnalysis')
     if (this.state.engineGameOngoing != null) {
@@ -2674,6 +2835,7 @@ class Sabaki extends EventEmitter {
       showWinrateGraph: true,
       showGameGraph: true,
       teachingGraphActive: false,
+      matchGraphActive: false,
     })
     const checkTree = () => {
       const current = this.inferredState.gameTree

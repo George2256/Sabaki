@@ -10,6 +10,7 @@ const {
   net,
 } = require('electron')
 const {resolve, join} = require('path')
+const os = require('os')
 const i18n = require('./i18n')
 const setting = require('./setting')
 const updater = require('./updater')
@@ -231,8 +232,42 @@ function setupIpcHandlers() {
       }
     })
   }
+  // The AI match check is likewise scoped to the window that started it.
+  const matchServices = new Map()
+  const matchService = (sender) => {
+    if (!matchServices.has(sender.id)) {
+      const service = require('./match/service').createService({
+        directory: join(setting.userDataDirectory, 'match', String(sender.id)),
+        getEngines: () => setting.get('engines.list'),
+        getHumanModel: () => setting.get('match.human_model'),
+        searchDirectories: [
+          join(os.homedir(), '.katago'),
+          join(setting.userDataDirectory, 'models'),
+        ],
+      })
+      service.on('change', (state) => {
+        if (!sender.isDestroyed()) sender.send('match:change', state)
+      })
+      matchServices.set(sender.id, service)
+      sender.once('destroyed', () => {
+        service.cancel()
+        matchServices.delete(sender.id)
+      })
+    }
+    return matchServices.get(sender.id)
+  }
+  for (const method of ['status', 'start', 'cancel']) {
+    ipcMain.handle(`match:${method}`, async ({sender}, input) => {
+      try {
+        return {ok: true, data: await matchService(sender)[method](input)}
+      } catch (error) {
+        return {ok: false, error: error.message}
+      }
+    })
+  }
   app.on('before-quit', () => {
     for (const service of teachingServices.values()) service.cancel()
+    for (const service of matchServices.values()) service.cancel()
   })
   const setSettingAndNotify = (key, value) => {
     setting.set(key, value)

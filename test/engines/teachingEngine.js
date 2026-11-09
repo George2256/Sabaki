@@ -1,9 +1,11 @@
 // Deterministic JSON protocol engine: tests use explicit synthetic evaluations,
 // not claims of real KataGo strength. Every PV is built from legal empty points.
 const {createInterface} = require('readline')
-const {replay} = require('../../src/teaching/position')
+const {replay, policyIndex} = require('../../src/teaching/position')
 const input = createInterface({input: process.stdin})
 const slow = process.argv.includes('--slow')
+// Later turns answer later, so parallel scans can be stopped part way.
+const stagger = process.argv.includes('--stagger')
 input.on('line', (line) => {
   const query = JSON.parse(line)
   if (query.action === 'query_version')
@@ -66,9 +68,27 @@ input.on('line', (line) => {
         ...board.signMap.flat().map((stone) => (stone ? -1 : 0.01)),
         0.01,
       ]
+    // A stand-in for the human SL model: players of stronger profiles find the
+    // engine's move more often; the rest is spread over the empty points.
+    const profile = query.overrideSettings?.humanSLProfile
+    if (query.includePolicy && profile) {
+      const share = profile.startsWith('proyear')
+        ? 0.6
+        : profile.endsWith('d')
+          ? 0.4
+          : 0.2
+      const cells = board.signMap.flat()
+      const empty = cells.filter((stone) => !stone).length
+      const policy = cells.map((stone) =>
+        stone ? -1 : (1 - share - 0.01) / Math.max(1, empty - 1),
+      )
+      policy.push(0.01)
+      policy[policyIndex(query, move)] = share
+      result.humanPolicy = policy
+    }
     // Split output chunks and emit an intermediate update to exercise framing.
     send({...result, isDuringSearch: true})
-    setTimeout(() => send(result), slow ? 500 : 5)
+    setTimeout(() => send(result), stagger ? 600 * turn : slow ? 500 : 5)
   } catch {
     send({id: query.id, error: 'illegal move'})
   }

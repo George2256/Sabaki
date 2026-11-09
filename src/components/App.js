@@ -382,7 +382,8 @@ class App extends Component {
 
         beginSideSize: state.showLeftSidebar ? state.leftSidebarWidth : 0,
         endSideSize: state.showSidebar
-          ? state.showTeachingReview && state.sidebarTab === 'teaching'
+          ? (state.showTeachingReview && state.sidebarTab === 'teaching') ||
+            (state.showMatchReport && state.sidebarTab === 'match')
             ? Math.max(360, state.sidebarWidth)
             : state.sidebarWidth
           : 0,

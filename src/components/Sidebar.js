@@ -7,7 +7,9 @@ import Slider from './sidebars/Slider.js'
 import GameGraph from './sidebars/GameGraph.js'
 import CommentBox from './sidebars/CommentBox.js'
 import TeachingReview from './sidebars/TeachingReview.js'
+import MatchReport from './sidebars/MatchReport.js'
 import {t as teachingText} from '../teaching/strings.js'
+import {t as matchText} from '../match/strings.js'
 
 const setting = {
   get: (key) => window.sabaki.setting.get(key),
@@ -103,7 +105,8 @@ export default class Sidebar extends Component {
     if (
       this.props.sidebarTab === 'record' &&
       (previous.sidebarTab !== this.props.sidebarTab ||
-        previous.showTeachingReview !== this.props.showTeachingReview)
+        previous.showTeachingReview !== this.props.showTeachingReview ||
+        previous.showMatchReport !== this.props.showMatchReport)
     ) {
       this.gameGraph?.remeasure()
       this.gameGraph?.updateCameraPosition()
@@ -125,10 +128,13 @@ export default class Sidebar extends Component {
       showGameGraph,
       showCommentBox,
       showTeachingReview,
+      showMatchReport,
       sidebarTab,
       teachingReview,
       teachingPosition,
       teachingGraph,
+      matchReview,
+      matchPosition,
       engineGameOngoing,
 
       graphGridSize,
@@ -152,6 +158,14 @@ export default class Sidebar extends Component {
       (teachingGraph != null ||
         batchAnalysis != null ||
         winrateData.some((x) => x != null))
+    const showTabs = showTeachingReview || showMatchReport
+    const page =
+      showTeachingReview && sidebarTab === 'teaching'
+        ? 'teaching'
+        : showMatchReport && sidebarTab === 'match'
+          ? 'match'
+          : 'record'
+    const language = setting.get('app.lang')
 
     return h(
       'section',
@@ -169,10 +183,9 @@ export default class Sidebar extends Component {
 
         sideContent: h(WinrateGraph, {
           batchAnalysis,
-          teachingRunning: !!teachingReview?.running,
-          teachingGraph: teachingGraph
-            ? {...teachingGraph, phase: teachingReview.phase}
-            : null,
+          teachingRunning: !!teachingReview?.running || !!matchReview?.running,
+          matchRunning: !!matchReview?.running,
+          teachingGraph,
           lastPlayer,
           width: winrateGraphWidth,
           data: analysisType === 'winrate' ? winrateData : scoreLeadData,
@@ -184,38 +197,49 @@ export default class Sidebar extends Component {
         mainContent: h(
           'div',
           {class: 'sidebar-pages'},
-          showTeachingReview &&
+          showTabs &&
             h(
               'nav',
               {
                 class: 'sidebar-tabs',
-                'aria-label': teachingText(setting.get('app.lang'), 'title'),
+                'aria-label': teachingText(language, 'title'),
               },
               h(
                 'button',
                 {
                   type: 'button',
-                  class: sidebarTab === 'record' ? 'current' : '',
+                  class: page === 'record' ? 'current' : '',
                   onClick: () => sabaki.setState({sidebarTab: 'record'}),
                 },
-                teachingText(setting.get('app.lang'), 'record'),
+                teachingText(language, 'record'),
               ),
-              h(
-                'button',
-                {
-                  type: 'button',
-                  class: sidebarTab === 'teaching' ? 'current' : '',
-                  onClick: () => sabaki.openTeachingReview(),
-                },
-                teachingText(setting.get('app.lang'), 'title'),
-              ),
+              showTeachingReview &&
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    class: page === 'teaching' ? 'current' : '',
+                    onClick: () => sabaki.openTeachingReview(),
+                  },
+                  teachingText(language, 'title'),
+                ),
+              showMatchReport &&
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    class: page === 'match' ? 'current' : '',
+                    onClick: () => sabaki.openMatchReport(),
+                  },
+                  matchText(language, 'tab'),
+                ),
             ),
           h(
             'div',
             {
               class: 'record-page',
-              hidden: showTeachingReview && sidebarTab === 'teaching',
-              style: {top: showTeachingReview ? 36 : 0},
+              hidden: page !== 'record',
+              style: {top: showTabs ? 36 : 0},
             },
             h(SplitContainer, {
               vertical: true,
@@ -301,11 +325,20 @@ export default class Sidebar extends Component {
             }),
           ),
           h(TeachingReview, {
-            active: showTeachingReview && sidebarTab === 'teaching',
+            active: page === 'teaching',
             review: teachingReview,
             position: teachingPosition,
             engineGameOngoing,
           }),
+          showMatchReport &&
+            h(MatchReport, {
+              active: page === 'match',
+              review: matchReview,
+              position: matchPosition,
+              gameTree,
+              treePosition,
+              engineGameOngoing,
+            }),
         ),
 
         onChange: this.handleWinrateGraphSplitChange,

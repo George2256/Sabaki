@@ -1,0 +1,344 @@
+#match-report {
+  position: absolute;
+  inset: 36px 0 0;
+  overflow-y: auto;
+  padding: 14px;
+  color: #ddd;
+  box-sizing: border-box;
+}
+#match-report[hidden] {
+  display: none;
+}
+#match-report h3 {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+}
+#match-report h4 {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+}
+#match-report p {
+  margin: 8px 0;
+  line-height: 1.6;
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+#match-report label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+#match-report label > span {
+  flex: 0 0 72px;
+}
+#match-report input:not([type='checkbox']),
+#match-report select {
+  min-width: 0;
+  flex: 1;
+  background: #252525;
+  color: #eee;
+  padding: 4px 6px;
+  border: 1px solid #555;
+  border-radius: 3px;
+}
+#match-report button {
+  background: #292929;
+  color: #eee;
+  padding: 5px 9px;
+  border: 1px solid #555;
+  border-radius: 3px;
+}
+#match-report button:hover:not(:disabled) {
+  background: #3d3d3d;
+}
+#match-report button:disabled {
+  opacity: 0.45;
+}
+#match-report .match-check {
+  font-size: 12px;
+  align-items: flex-start;
+}
+#match-report .match-check input {
+  flex: none;
+  margin: 0;
+  width: 16px;
+  height: 16px;
+  background: #252525;
+  border: 1px solid #777;
+  border-radius: 3px;
+  padding: 0;
+}
+#match-report .match-check input::before {
+  filter: invert(100%);
+  background-size: auto 12px;
+}
+#match-report .match-start {
+  width: 100%;
+  margin-top: 10px;
+}
+.match-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.match-range {
+  display: flex;
+  gap: 10px;
+}
+.match-range label {
+  flex: 1;
+  min-width: 0;
+}
+#match-report .match-range input {
+  width: 0;
+}
+#match-report .match-range label > span {
+  flex: none;
+}
+.match-status {
+  color: #c8d7a3;
+}
+.match-error {
+  color: #efb890;
+}
+.match-note {
+  color: #aaa;
+  font-size: 12px;
+}
+.match-result {
+  border-top: 1px solid #555;
+  margin-top: 14px;
+  padding-top: 14px;
+}
+.match-verdicts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.match-verdict {
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.match-verdict strong {
+  font-size: 15px;
+  font-weight: 500;
+}
+.match-player {
+  color: #aaa;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.verdict-normal {
+  border-color: #7d8f58;
+}
+.verdict-normal strong {
+  color: #c8d7a3;
+}
+.verdict-elevated {
+  border-color: #b58d4c;
+}
+.verdict-elevated strong {
+  color: #e9c27e;
+}
+.verdict-suspected {
+  border-color: #c0614f;
+  background: rgba(192, 97, 79, 0.12);
+}
+.verdict-suspected strong {
+  color: #f0a090;
+}
+.verdict-insufficient strong,
+.verdict-pending strong {
+  color: #aaa;
+}
+.match-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 4px;
+  font-size: 13px;
+}
+.match-table th,
+.match-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid #3a3a3a;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.match-table th[scope='row'] {
+  text-align: left;
+  font-weight: normal;
+  color: #bbb;
+}
+.match-table thead th {
+  color: #aaa;
+  font-weight: normal;
+}
+.match-disclaimer {
+  border-left: 2px solid #555;
+  padding-left: 8px;
+}
+#match-report .match-copy {
+  width: 100%;
+  margin: 4px 0 14px;
+}
+.match-details-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+#match-report .match-details-heading select {
+  flex: 0 1 auto;
+}
+.match-moves {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+#match-report .match-moves button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 76px 1fr auto;
+  grid-template-rows: auto auto;
+  column-gap: 6px;
+  text-align: left;
+  font-size: 12px;
+  padding: 4px 6px;
+  margin: 2px 0;
+  border-color: #3a3a3a;
+  font-variant-numeric: tabular-nums;
+}
+.match-move {
+  grid-row: 1 / 3;
+  align-self: center;
+  color: #eee;
+}
+.match-choice {
+  color: #bbb;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.match-loss {
+  grid-column: 2;
+  color: #999;
+}
+.match-tag {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  align-self: center;
+  font-size: 11px;
+}
+#match-report .match-moves button.top1 {
+  border-left: 3px solid #8fa35f;
+}
+#match-report .match-moves button.mistake {
+  border-left: 3px solid #d0a050;
+}
+#match-report .match-moves button.mistake .match-tag {
+  color: #e9c27e;
+}
+#match-report .match-moves button.blunder {
+  border-left: 3px solid #d0604c;
+}
+#match-report .match-moves button.blunder .match-tag {
+  color: #f0a090;
+}
+#match-report .match-moves button.excluded {
+  opacity: 0.55;
+}
+#match-report .match-moves button.current {
+  border-color: #b5c585;
+  background: #34382a;
+}
+.match-verdict small {
+  color: #bbb;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.match-verdict small.match-evidence {
+  color: #ddd;
+  font-variant-numeric: tabular-nums;
+}
+.verdict-uncalibrated strong {
+  color: #aaa;
+}
+.match-human-missing {
+  border: 1px solid #6a4a3a;
+  border-radius: 4px;
+  padding: 2px 8px 8px;
+  margin: 8px 0;
+}
+#match-report .match-human-missing p {
+  margin: 6px 0;
+  font-size: 12px;
+}
+.match-human {
+  margin: 4px 0 8px;
+}
+.match-timeline {
+  margin: 16px 0 8px;
+}
+.match-timeline h4,
+.match-segments h4 {
+  margin-bottom: 6px !important;
+}
+.match-timeline-row {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+  font-size: 12px;
+  color: #aaa;
+}
+.match-timeline-row svg {
+  width: 100%;
+  height: 28px;
+  background: #1d1d1d;
+  border-radius: 2px;
+  cursor: pointer;
+  display: block;
+}
+.match-timeline-slot {
+  fill: #2b2b2b;
+}
+.match-bar {
+  fill: #b0884c;
+}
+.match-bar.matched {
+  fill: #e0604c;
+}
+.match-timeline-current {
+  fill: rgba(181, 197, 133, 0.45);
+}
+.match-segments {
+  margin: 12px 0;
+}
+#match-report .match-segments button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-size: 12px;
+  margin: 3px 0;
+  border-left: 3px solid #e0604c;
+  line-height: 1.5;
+}
+#match-report .match-moves button.likely {
+  border-left: 3px solid #e0604c;
+}
+#match-report .match-moves button.likely .match-tag {
+  color: #f0a090;
+}

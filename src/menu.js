@@ -8,6 +8,7 @@ const {app} = isRenderer
 
 const i18n = require('./i18n')
 const {t: teachingText} = require('./teaching/strings')
+const {t: matchText} = require('./match/strings')
 const sabaki = isRenderer ? require('./modules/sabaki').default : null
 const dialog = isRenderer ? require('./modules/dialog') : null
 const setting = isRenderer
@@ -596,6 +597,10 @@ exports.get = function (props = {}) {
         {
           label: teachingText(setting.get('app.lang'), 'title'),
           click: () => sabaki.openTeachingReview(),
+        },
+        {
+          label: matchText(setting.get('app.lang'), 'title'),
+          click: () => sabaki.openMatchReport(),
         },
         {
           label: i18n.t('menu.tools', 'Toggle Auto&play Mode'),

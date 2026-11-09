@@ -99,6 +99,7 @@ export default class WinrateGraph extends Component {
       analysisType,
       batchAnalysis,
       teachingRunning,
+      matchRunning,
       teachingGraph,
     },
     {invert},
@@ -106,6 +107,8 @@ export default class WinrateGraph extends Component {
     return (
       batchAnalysis !== this.props.batchAnalysis ||
       teachingRunning !== this.props.teachingRunning ||
+      matchRunning !== this.props.matchRunning ||
+      teachingGraph?.label !== this.props.teachingGraph?.label ||
       teachingGraph?.completed !== this.props.teachingGraph?.completed ||
       teachingGraph?.total !== this.props.teachingGraph?.total ||
       teachingGraph?.phase !== this.props.teachingGraph?.phase ||
@@ -152,6 +155,7 @@ export default class WinrateGraph extends Component {
       analysisType,
       batchAnalysis,
       teachingRunning,
+      matchRunning,
       teachingGraph,
     } = this.props
     let {invert} = this.state
@@ -228,7 +232,7 @@ export default class WinrateGraph extends Component {
           'span',
           {role: 'status'},
           teachingGraph
-            ? `${teachingText(setting.get('app.lang'), 'graphSource')} ${teachingText(setting.get('app.lang'), teachingGraph.phase === 'canceled' ? 'canceled' : teachingGraph.phase === 'failed' ? 'failed' : teachingGraph.completed === teachingGraph.total ? 'complete' : 'scanning')} ${teachingGraph.completed}/${teachingGraph.total}`
+            ? `${teachingGraph.label || teachingText(setting.get('app.lang'), 'graphSource')} ${teachingText(setting.get('app.lang'), teachingGraph.phase === 'canceled' ? 'canceled' : teachingGraph.phase === 'failed' ? 'failed' : teachingGraph.completed === teachingGraph.total ? 'complete' : 'scanning')} ${teachingGraph.completed}/${teachingGraph.total}`
             : batchAnalysis
               ? `${batchT(batchAnalysis.running ? 'Analyzing' : batchAnalysis.completed === batchAnalysis.total ? 'Complete' : 'Stopped')} ${batchAnalysis.completed}/${batchAnalysis.total}`
               : batchT('Current branch'),
@@ -239,9 +243,11 @@ export default class WinrateGraph extends Component {
             type: 'button',
             disabled: !!batchAnalysis?.stopping || teachingRunning,
             title: batchT(
-              teachingRunning
-                ? 'Stop the teaching review before drawing the graph.'
-                : 'Analyze every position in the current branch. Existing results are kept.',
+              matchRunning
+                ? 'Stop the AI match check before drawing the graph.'
+                : teachingRunning
+                  ? 'Stop the teaching review before drawing the graph.'
+                  : 'Analyze every position in the current branch. Existing results are kept.',
             ),
             onClick: () =>
               sabaki.batchAnalysisJob

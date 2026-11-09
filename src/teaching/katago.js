@@ -128,7 +128,13 @@ class KataGo extends EventEmitter {
   async analyze(
     position,
     turn,
-    {visits = 100, maxTime = 1, allowMove = null, includePolicy = false} = {},
+    {
+      visits = 100,
+      maxTime = 1,
+      allowMove = null,
+      includePolicy = false,
+      overrides = {},
+    } = {},
   ) {
     const input = {
       initialStones: position.initialStones,
@@ -142,7 +148,7 @@ class KataGo extends EventEmitter {
       maxVisits: visits,
       analysisPVLen: 11,
       includePolicy,
-      overrideSettings: {maxTime, ignorePreRootHistory: false},
+      overrideSettings: {...overrides, maxTime, ignorePreRootHistory: false},
     }
     const player =
       turn < position.moves.length
@@ -197,6 +203,8 @@ class KataGo extends EventEmitter {
       root: result.rootInfo,
       candidates,
       policy: result.policy,
+      // Present only with -human-model, includePolicy and a humanSLProfile.
+      humanPolicy: result.humanPolicy,
     }
   }
 }
